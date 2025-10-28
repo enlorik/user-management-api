@@ -89,14 +89,21 @@
     async function authFetch(path, opts = {}) {
       opts.credentials = 'include';
       opts.headers = { 'Content-Type': 'application/json' };
+
       const res = await fetch(API + path, opts);
-      let data;
-      try { data = await res.json(); } catch { data = {}; }
+
+      // Try to parse JSON (but don’t die on HTML/text responses in prod)
+      let data = null;
+      const txt = await res.text();
+      try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
+
       if (!res.ok) {
-        const errorMsg = data?.error || 'HTTP ' + res.status;
-        throw new Error(errorMsg);
+        const serverMsg = (data && (data.error || data.message)) || '';
+        const err = new Error(serverMsg || `HTTP ${res.status}`);
+        err.status = res.status;
+        throw err;
       }
-      return data;
+      return data ?? {}; // allow empty body
     }
 
     async function loadUsers() {
@@ -108,28 +115,28 @@
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${u.id}</td>
-            <td><input class="form-control form-control-sm edit-username" data-id="${u.id}" value="${u.username}"/></td>
-            <td><input class="form-control form-control-sm edit-email" data-id="${u.id}" value="${u.email}"/></td>
+            <td><input class="form-control form-control-sm edit-username" data-id="${u.id}" value="${u.username ?? ''}"/></td>
+            <td><input class="form-control form-control-sm edit-email"    data-id="${u.id}" value="${u.email ?? ''}"/></td>
             <td>
               <select class="form-select form-select-sm edit-role" data-id="${u.id}">
-                <option value="USER" ${u.role==='USER' ? 'selected' : ''}>USER</option>
+                <option value="USER"  ${u.role==='USER'  ? 'selected' : ''}>USER</option>
                 <option value="ADMIN" ${u.role==='ADMIN' ? 'selected' : ''}>ADMIN</option>
               </select>
             </td>
             <td><input type="password" class="form-control form-control-sm edit-password" data-id="${u.id}" placeholder="••••••"/></td>
             <td>
-              <button class="btn btn-sm btn-primary save-btn" data-id="${u.id}">Save</button>
-              <button class="btn btn-sm btn-danger delete-btn" data-id="${u.id}">Delete</button>
+              <button class="btn btn-sm btn-primary save-btn"   data-id="${u.id}">Save</button>
+              <button class="btn btn-sm btn-danger delete-btn"  data-id="${u.id}">Delete</button>
             </td>`;
           tbody.appendChild(tr);
         });
-        attachHandlers();
+        attachRowHandlers();
       } catch (e) {
-        alert('Error loading users: ' + e);
+        console.error('Error loading users:', e);
       }
     }
 
-    function attachHandlers() {
+    function attachRowHandlers() {
       document.querySelectorAll('.save-btn').forEach(btn => {
         btn.onclick = async () => {
           const id = btn.dataset.id;
@@ -144,32 +151,29 @@
             await authFetch(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
             loadUsers();
           } catch (err) {
-            alert('❌ Update failed: ' + err.message);
+            console.error('Update failed:', err);
           }
         };
       });
 
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.onclick = async () => {
-          if (!confirm('Delete this user?')) return;
           try {
             await authFetch(`/users/${btn.dataset.id}`, { method: 'DELETE' });
             loadUsers();
           } catch (err) {
-            alert('❌ Delete failed: ' + err.message);
+            console.error('Delete failed:', err);
           }
         };
       });
     }
 
-    // Helper: hide all messages
     function clearMessages() {
       document.getElementById('usernameError').classList.add('d-none');
       document.getElementById('emailError').classList.add('d-none');
       document.getElementById('createSuccess').classList.add('d-none');
     }
 
-    // Create form submit
     document.getElementById('createForm').onsubmit = async (e) => {
       e.preventDefault();
       clearMessages();
@@ -178,21 +182,16 @@
       const emailField    = document.getElementById('newEmail');
       const passwordField = document.getElementById('newPassword');
       const roleField     = document.getElementById('newRole');
+
       const usernameError = document.getElementById('usernameError');
       const emailError    = document.getElementById('emailError');
       const successBox    = document.getElementById('createSuccess');
 
-      const username = usernameField.value.trim();
-      const email    = emailField.value.trim();
-      const payload  = {
-        username,
-        email,
-        password: passwordField.value,
-        role: roleField.value
-      };
+      const username = (usernameField.value || '').trim();
+      const email    = (emailField.value || '').trim();
 
+      // 1) Client-side pre-check to show BOTH errors simultaneously
       try {
-        // 1) Client-side pre-check so we can show BOTH errors at once
         const users = await authFetch('/users', { method: 'GET' });
         const usernameTaken = users.some(u => (u.username || '').toLowerCase() === username.toLowerCase());
         const emailTaken    = users.some(u => (u.email || '').toLowerCase()    === email.toLowerCase());
@@ -206,38 +205,52 @@
             emailError.textContent = 'Email already in use.';
             emailError.classList.remove('d-none');
           }
-          return; // don’t POST if conflicts detected
+          return;
         }
+      } catch (preErr) {
+        // If pre-check fails (e.g., 401 in prod), just proceed to server create and parse its error.
+        console.warn('Pre-check skipped:', preErr);
+      }
 
-        // 2) No conflicts → create
-        await authFetch('/users', { method: 'POST', body: JSON.stringify(payload) });
+      // 2) Try to create
+      try {
+        await authFetch('/users', {
+          method: 'POST',
+          body: JSON.stringify({
+            username,
+            email,
+            password: passwordField.value,
+            role: roleField.value
+          })
+        });
 
         successBox.classList.remove('d-none');
         e.target.reset();
         loadUsers();
       } catch (err) {
-        // Fallback: if server rejected for any reason, try to parse message and show what we can
+        // Parse server error/status to show field-specific messages (no alert)
         const msg = (err.message || '').toLowerCase();
-        let shown = false;
+        let any = false;
 
         if (msg.includes('username')) {
           usernameError.textContent = 'Username already exists.';
           usernameError.classList.remove('d-none');
-          shown = true;
+          any = true;
         }
         if (msg.includes('email')) {
           emailError.textContent = 'Email already in use.';
           emailError.classList.remove('d-none');
-          shown = true;
+          any = true;
         }
-        if (!shown) {
+        if (!any) {
+          // Conflict status without message, or HTML response → generic
           emailError.textContent = 'Failed to create user.';
           emailError.classList.remove('d-none');
         }
+        console.warn('Create failed:', err);
       }
     };
 
-    // initial load
     loadUsers();
   </script>
 </body>
