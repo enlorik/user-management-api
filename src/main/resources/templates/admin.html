@@ -21,10 +21,11 @@
       border: 1px solid #badbcc;
       border-radius: 4px;
       padding: 10px 15px;
-      margin-top: 20px;
+      margin-top: 12px;
       font-size: 1rem;
     }
     .btn-tight { width:100%; height:38px; }
+    .gap-below { height: 42px; } /* reserves space under inputs so layout doesn't shift */
   </style>
 </head>
 <body>
@@ -43,19 +44,19 @@
     <table class="table table-hover shadow-sm">
       <thead class="table-light">
         <tr>
-          <th>ID</th>
+          <th style="width:80px;">ID</th>
           <th>Username</th>
           <th>Email</th>
-          <th>Role</th>
-          <th>New Password</th>
-          <th>Actions</th>
+          <th style="width:140px;">Role</th>
+          <th style="width:170px;">New Password</th>
+          <th style="width:170px;">Actions</th>
         </tr>
       </thead>
       <tbody id="usersTableBody"></tbody>
     </table>
 
     <hr/>
-    <h3>Create New User</h3>
+    <h3 id="formTitle">Create New User</h3>
 
     <form id="createForm" class="row g-3">
       <div class="col-md-3">
@@ -67,7 +68,7 @@
         <div id="emailError" class="form-error d-none"></div>
       </div>
       <div class="col-md-2">
-        <input type="password" id="newPassword" class="form-control" placeholder="Password" required/>
+        <input type="password" id="newPassword" class="form-control" placeholder="Password" />
       </div>
       <div class="col-md-2">
         <select id="newRole" class="form-select">
@@ -76,34 +77,88 @@
         </select>
       </div>
       <div class="col-md-2 d-grid">
-        <button type="submit" class="btn btn-success btn-tight">Create</button>
+        <button type="submit" id="submitBtn" class="btn btn-success btn-tight">Create</button>
+      </div>
+
+      <!-- keep layout stable so messages don't shift the grid -->
+      <div class="col-12 gap-below"></div>
+
+      <!-- success box sits under the inputs, same place as errors -->
+      <div class="col-12">
+        <div id="createSuccess" class="form-success d-none">User created successfully.</div>
+      </div>
+
+      <!-- hidden while creating; visible while editing -->
+      <div class="col-12 d-flex gap-2">
+        <button type="button" id="cancelEdit" class="btn btn-outline-secondary d-none">Cancel edit</button>
       </div>
     </form>
-
-    <div id="createSuccess" class="form-success d-none">User created successfully.</div>
   </div>
 
   <script>
     const API = '';
+    let editMode = false;
+    let editId = null;
 
     async function authFetch(path, opts = {}) {
       opts.credentials = 'include';
       opts.headers = { 'Content-Type': 'application/json' };
-
       const res = await fetch(API + path, opts);
-
-      // Try to parse JSON (but don’t die on HTML/text responses in prod)
-      let data = null;
-      const txt = await res.text();
-      try { data = txt ? JSON.parse(txt) : null; } catch { data = null; }
-
+      let data;
+      try { data = await res.json(); } catch { data = {}; }
       if (!res.ok) {
-        const serverMsg = (data && (data.error || data.message)) || '';
-        const err = new Error(serverMsg || `HTTP ${res.status}`);
+        const errorMsg = data?.error || 'HTTP ' + res.status;
+        const err = new Error(errorMsg);
         err.status = res.status;
+        err.payload = data;
         throw err;
       }
-      return data ?? {}; // allow empty body
+      return data;
+    }
+
+    function clearMessages() {
+      document.getElementById('usernameError').classList.add('d-none');
+      document.getElementById('emailError').classList.add('d-none');
+      document.getElementById('createSuccess').classList.add('d-none');
+    }
+
+    function setCreateMode() {
+      editMode = false;
+      editId = null;
+      document.getElementById('formTitle').textContent = 'Create New User';
+      document.getElementById('submitBtn').textContent = 'Create';
+      document.getElementById('submitBtn').classList.remove('btn-primary');
+      document.getElementById('submitBtn').classList.add('btn-success');
+      document.getElementById('cancelEdit').classList.add('d-none');
+      clearMessages();
+      document.getElementById('createSuccess').textContent = 'User created successfully.';
+      // In create mode, password is required
+      document.getElementById('newPassword').required = true;
+      // reset fields
+      document.getElementById('newUsername').value = '';
+      document.getElementById('newEmail').value = '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('newRole').value = 'USER';
+    }
+
+    function setEditMode(user) {
+      editMode = true;
+      editId = user.id;
+      document.getElementById('formTitle').textContent = `Edit User #${user.id}`;
+      document.getElementById('submitBtn').textContent = 'Update';
+      document.getElementById('submitBtn').classList.remove('btn-success');
+      document.getElementById('submitBtn').classList.add('btn-primary');
+      document.getElementById('cancelEdit').classList.remove('d-none');
+      clearMessages();
+      document.getElementById('createSuccess').textContent = 'User updated successfully.';
+      // In edit mode, password is optional
+      document.getElementById('newPassword').required = false;
+
+      // fill the form
+      document.getElementById('newUsername').value = user.username || '';
+      document.getElementById('newEmail').value = user.email || '';
+      document.getElementById('newPassword').value = '';
+      document.getElementById('newRole').value = user.role || 'USER';
     }
 
     async function loadUsers() {
@@ -115,65 +170,57 @@
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td>${u.id}</td>
-            <td><input class="form-control form-control-sm edit-username" data-id="${u.id}" value="${u.username ?? ''}"/></td>
-            <td><input class="form-control form-control-sm edit-email"    data-id="${u.id}" value="${u.email ?? ''}"/></td>
+            <td>${escapeHtml(u.username ?? '')}</td>
+            <td>${escapeHtml(u.email ?? '')}</td>
+            <td>${escapeHtml(u.role ?? '')}</td>
             <td>
-              <select class="form-select form-select-sm edit-role" data-id="${u.id}">
-                <option value="USER"  ${u.role==='USER'  ? 'selected' : ''}>USER</option>
-                <option value="ADMIN" ${u.role==='ADMIN' ? 'selected' : ''}>ADMIN</option>
-              </select>
+              <span class="text-muted">••••••</span>
             </td>
-            <td><input type="password" class="form-control form-control-sm edit-password" data-id="${u.id}" placeholder="••••••"/></td>
-            <td>
-              <button class="btn btn-sm btn-primary save-btn"   data-id="${u.id}">Save</button>
-              <button class="btn btn-sm btn-danger delete-btn"  data-id="${u.id}">Delete</button>
+            <td class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-primary edit-btn" data-id="${u.id}">Edit in form</button>
+              <button class="btn btn-sm btn-danger delete-btn" data-id="${u.id}">Delete</button>
             </td>`;
           tbody.appendChild(tr);
         });
-        attachRowHandlers();
+        attachHandlers(users);
       } catch (e) {
-        console.error('Error loading users:', e);
+        alert('Error loading users: ' + e);
       }
     }
 
-    function attachRowHandlers() {
-      document.querySelectorAll('.save-btn').forEach(btn => {
-        btn.onclick = async () => {
-          const id = btn.dataset.id;
-          const username = document.querySelector(`.edit-username[data-id="${id}"]`).value;
-          const email    = document.querySelector(`.edit-email[data-id="${id}"]`).value;
-          const role     = document.querySelector(`.edit-role[data-id="${id}"]`).value;
-          const pwdField = document.querySelector(`.edit-password[data-id="${id}"]`);
-          const password = pwdField.value;
-          const payload = { username, email, role };
-          if (password) payload.password = password;
-          try {
-            await authFetch(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-            loadUsers();
-          } catch (err) {
-            console.error('Update failed:', err);
-          }
+    function attachHandlers(users) {
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.onclick = () => {
+          const id = Number(btn.dataset.id);
+          const user = users.find(x => x.id === id);
+          if (user) setEditMode(user);
         };
       });
 
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.onclick = async () => {
+          if (!confirm('Delete this user?')) return;
           try {
             await authFetch(`/users/${btn.dataset.id}`, { method: 'DELETE' });
+            if (editMode && Number(btn.dataset.id) === editId) setCreateMode();
             loadUsers();
           } catch (err) {
-            console.error('Delete failed:', err);
+            alert('❌ Delete failed: ' + err.message);
           }
         };
       });
+
+      document.getElementById('cancelEdit').onclick = () => setCreateMode();
     }
 
-    function clearMessages() {
-      document.getElementById('usernameError').classList.add('d-none');
-      document.getElementById('emailError').classList.add('d-none');
-      document.getElementById('createSuccess').classList.add('d-none');
+    // Escape helper for safe interpolation
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, m => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[m]));
     }
 
+    // Create/Update handler (unified)
     document.getElementById('createForm').onsubmit = async (e) => {
       e.preventDefault();
       clearMessages();
@@ -182,19 +229,26 @@
       const emailField    = document.getElementById('newEmail');
       const passwordField = document.getElementById('newPassword');
       const roleField     = document.getElementById('newRole');
-
       const usernameError = document.getElementById('usernameError');
       const emailError    = document.getElementById('emailError');
       const successBox    = document.getElementById('createSuccess');
 
-      const username = (usernameField.value || '').trim();
-      const email    = (emailField.value || '').trim();
+      const username = usernameField.value.trim();
+      const email    = emailField.value.trim();
+      const password = passwordField.value;
+      const role     = roleField.value;
 
-      // 1) Client-side pre-check to show BOTH errors simultaneously
+      // Client-side duplicate check to show BOTH boxes if needed
       try {
         const users = await authFetch('/users', { method: 'GET' });
-        const usernameTaken = users.some(u => (u.username || '').toLowerCase() === username.toLowerCase());
-        const emailTaken    = users.some(u => (u.email || '').toLowerCase()    === email.toLowerCase());
+        const usernameTaken = users.some(u =>
+          (u.username || '').toLowerCase() === username.toLowerCase() &&
+          (!editMode || u.id !== editId)
+        );
+        const emailTaken = users.some(u =>
+          (u.email || '').toLowerCase() === email.toLowerCase() &&
+          (!editMode || u.id !== editId)
+        );
 
         if (usernameTaken || emailTaken) {
           if (usernameTaken) {
@@ -207,50 +261,47 @@
           }
           return;
         }
-      } catch (preErr) {
-        // If pre-check fails (e.g., 401 in prod), just proceed to server create and parse its error.
-        console.warn('Pre-check skipped:', preErr);
-      }
 
-      // 2) Try to create
-      try {
-        await authFetch('/users', {
-          method: 'POST',
-          body: JSON.stringify({
-            username,
-            email,
-            password: passwordField.value,
-            role: roleField.value
-          })
-        });
-
-        successBox.classList.remove('d-none');
-        e.target.reset();
+        if (!editMode) {
+          // CREATE
+          const payload = { username, email, password, role };
+          await authFetch('/users', { method: 'POST', body: JSON.stringify(payload) });
+          successBox.textContent = 'User created successfully.';
+          successBox.classList.remove('d-none');
+          setCreateMode(); // resets form to blank create
+        } else {
+          // UPDATE
+          const payload = { username, email, role };
+          if (password && password.trim() !== '') payload.password = password;
+          await authFetch(`/users/${editId}`, { method: 'PUT', body: JSON.stringify(payload) });
+          successBox.textContent = 'User updated successfully.';
+          successBox.classList.remove('d-none');
+          setCreateMode();
+        }
         loadUsers();
       } catch (err) {
-        // Parse server error/status to show field-specific messages (no alert)
+        // Fallback server-side parse
         const msg = (err.message || '').toLowerCase();
-        let any = false;
-
+        let shown = false;
         if (msg.includes('username')) {
           usernameError.textContent = 'Username already exists.';
           usernameError.classList.remove('d-none');
-          any = true;
+          shown = true;
         }
         if (msg.includes('email')) {
           emailError.textContent = 'Email already in use.';
           emailError.classList.remove('d-none');
-          any = true;
+          shown = true;
         }
-        if (!any) {
-          // Conflict status without message, or HTML response → generic
-          emailError.textContent = 'Failed to create user.';
+        if (!shown) {
+          emailError.textContent = 'Failed to save user.';
           emailError.classList.remove('d-none');
         }
-        console.warn('Create failed:', err);
       }
     };
 
+    // initial
+    setCreateMode();
     loadUsers();
   </script>
 </body>

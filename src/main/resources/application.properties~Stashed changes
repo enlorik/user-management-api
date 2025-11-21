@@ -1,7 +1,4 @@
- ── LOCAL DEVELOPMENT ONLY ─────────────────────────────────────────────────
-
-
-
+── LOCAL DEVELOPMENT ONLY ─────────────────────────────────────────────────
 
 # Postgres (map host-5433→container-5432)
 spring.datasource.url=jdbc:postgresql://localhost:5433/usermgm
