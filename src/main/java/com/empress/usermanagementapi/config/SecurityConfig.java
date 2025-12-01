@@ -5,16 +5,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.core.userdetails.UserDetailsService;
 
 @Configuration
 @EnableMethodSecurity
@@ -23,15 +24,24 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+            // we use session + forms, but for this demo app CSRF is disabled
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers(
-                    "/login", "/register", "/css/**", "/js/**",
-                    "/forgot-password", "/forgot-password/**",
-                    "/reset-password", "/reset-password/**"
-                ).permitAll()
+                // static resources always public
+                .requestMatchers("/css/**", "/js/**").permitAll()
+
+                // auth + registration pages
+                .requestMatchers("/login", "/register").permitAll()
+
+                // forgot / reset password (explicit GET + POST)
+                .requestMatchers(HttpMethod.GET, "/forgot-password", "/reset-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/forgot-password", "/reset-password").permitAll()
+
+                // dashboards
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
+
+                // everything else requires auth
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -61,7 +71,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+            throws Exception {
         return config.getAuthenticationManager();
     }
 
@@ -69,7 +80,9 @@ public class SecurityConfig {
     public UserDetailsService userDetailsService(UserRepository repo) {
         return username -> {
             var u = repo.findByUsername(username);
-            if (u == null) throw new UsernameNotFoundException("No such user: " + username);
+            if (u == null) {
+                throw new UsernameNotFoundException("No such user: " + username);
+            }
             return org.springframework.security.core.userdetails.User
                 .builder()
                 .username(u.getUsername())
