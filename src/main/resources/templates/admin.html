@@ -4,10 +4,59 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard – User Management</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+  <style>
+    /* message boxes */
+    .form-error{
+      color:#842029;background:#f8d7da;border:1px solid #f5c2c7;border-radius:4px;
+      padding:6px 10px;margin-top:4px;font-size:.9rem;
+    }
+    .form-success{
+      color:#0f5132;background:#d1e7dd;border:1px solid #badbcc;border-radius:4px;
+      padding:10px 15px;margin-top:20px;font-size:1rem;
+    }
+
+    /* compact create/update button */
+    .btn-tight{width:100%;height:38px;}
+
+    /* scrollable users table wrapper (fixed height so form stays put) */
+    .users-scroll{
+      height:420px;
+      overflow-y:auto;
+      border:1px solid rgba(0,0,0,.075);
+      border-radius:.5rem;
+    }
+    /* sticky header inside scroll */
+    .users-scroll thead th{
+      position:sticky; top:0; z-index:2; background:#f8f9fa;
+    }
+
+    /* keep layout stable where messages appear */
+    .msg-reserve{min-height:44px;} /* ~ one error/success box height */
+
+    /* tighter table rows */
+    .table td, .table th { padding:.55rem .75rem; }
+
+    /* highlight the row being edited (no shape change, just tint) */
+    .editing-row{
+      background:#cfe2ff;
+      transition:background .15s ease;
+    }
+    .editing-row .cell-like{
+      background-color:#e7f1ff;
+      border-color:#9ec5fe;
+    }
+
+    /* cells look a bit like inputs but are read-only */
+    .cell-like{
+      background-color:#fff;
+      border:1px solid #dee2e6;
+      border-radius:.25rem;
+      padding:.25rem .5rem;
+      font-size:.9rem;
+    }
+  </style>
 </head>
 <body>
   <!-- Navbar -->
@@ -22,59 +71,68 @@
 
   <div class="container mt-4">
     <h2>All Users</h2>
-    <table class="table table-hover shadow-sm">
-      <thead class="table-light">
+
+    <!-- SCROLLABLE TABLE (fixed height so form below doesn't jump) -->
+    <div class="users-scroll shadow-sm">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
         <tr>
-          <th>ID</th>
-          <th>Username</th>
+          <th style="width:70px">ID</th>
+          <th style="width:220px">Username</th>
           <th>Email</th>
-          <th>Role</th>
-          <th>New Password</th>
-          <th>Actions</th>
+          <th style="width:130px">Role</th>
+          <th style="width:140px">Actions</th>
         </tr>
-      </thead>
-      <tbody id="usersTableBody">
-        <!-- Populated by JS -->
-      </tbody>
-    </table>
+        </thead>
+        <tbody id="usersTableBody"></tbody>
+      </table>
+    </div>
 
     <hr/>
-    <h3>Create New User</h3>
+    <!-- this title will change between Create / Edit -->
+    <h3 id="formTitle">Create New User</h3>
+
+    <!-- CREATE / UPDATE FORM (ONLY place where editing happens) -->
     <form id="createForm" class="row g-3">
       <div class="col-md-3">
         <input type="text" id="newUsername" class="form-control" placeholder="Username" required/>
+        <div id="usernameError" class="form-error d-none"></div>
       </div>
       <div class="col-md-3">
         <input type="email" id="newEmail" class="form-control" placeholder="Email" required/>
+        <div id="emailError" class="form-error d-none"></div>
       </div>
-      <div class="col-md-2">
-        <input type="password" id="newPassword" class="form-control" placeholder="Password" required/>
+      <div class="col-md-3">
+        <input type="password" id="newPassword" class="form-control" placeholder="Password"/>
       </div>
-      <div class="col-md-2">
+      <div class="col-md-1">
         <select id="newRole" class="form-select">
           <option value="USER">USER</option>
           <option value="ADMIN">ADMIN</option>
         </select>
       </div>
       <div class="col-md-2 d-grid">
-        <button type="submit" class="btn btn-success">Create</button>
+        <button id="createBtn" type="submit" class="btn btn-success btn-tight">Create</button>
       </div>
     </form>
+
+    <!-- reserved gap to avoid layout jump + success box uses same slot -->
+    <div class="msg-reserve">
+      <div id="createSuccess" class="form-success d-none">User created successfully.</div>
+    </div>
   </div>
 
   <script>
     const API = '';
+    let editingUserId   = null;   // when set, the Create button acts as Update
+    let editingUserName = null;   // for heading text
 
     async function authFetch(path, opts = {}) {
       opts.credentials = 'include';
       opts.headers = { 'Content-Type': 'application/json' };
       const res = await fetch(API + path, opts);
       let data;
-      try {
-        data = await res.json();
-      } catch {
-        data = {};
-      }
+      try { data = await res.json(); } catch { data = {}; }
       if (!res.ok) {
         const errorMsg = data?.error || 'HTTP ' + res.status;
         throw new Error(errorMsg);
@@ -82,61 +140,118 @@
       return data;
     }
 
+    function clearMessages() {
+      document.getElementById('usernameError').classList.add('d-none');
+      document.getElementById('emailError').classList.add('d-none');
+      document.getElementById('createSuccess').classList.add('d-none');
+    }
+
+    function clearRowHighlight(){
+      document
+        .querySelectorAll('#usersTableBody tr.editing-row')
+        .forEach(r => r.classList.remove('editing-row'));
+    }
+
+    function highlightRow(id){
+      clearRowHighlight();
+      const row = document.querySelector(`#usersTableBody tr[data-row-id="${id}"]`);
+      if(row) row.classList.add('editing-row');
+    }
+
+    function setFormMode(mode){ // 'create' | 'update'
+      const btn        = document.getElementById('createBtn');
+      const title      = document.getElementById('formTitle');
+      const passwordEl = document.getElementById('newPassword');
+
+      if(mode==='update'){
+        btn.classList.remove('btn-success');
+        btn.classList.add('btn-primary');
+        btn.textContent = 'Save Update';
+        if (title){
+          const label = editingUserName || editingUserId || '';
+          title.textContent = label ? `Edit User (${label})` : 'Edit User';
+        }
+        if (passwordEl){
+          passwordEl.placeholder = 'Leave blank to keep password';
+        }
+      }else{
+        editingUserId   = null;
+        editingUserName = null;
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-success');
+        btn.textContent = 'Create';
+        document.getElementById('createForm').reset();
+        clearRowHighlight();
+        if (title) title.textContent = 'Create New User';
+        if (passwordEl){
+          passwordEl.placeholder = 'Password';
+        }
+      }
+      clearMessages();
+    }
+
     async function loadUsers() {
       try {
         const users = await authFetch('/users', { method: 'GET' });
         const tbody = document.getElementById('usersTableBody');
         tbody.innerHTML = '';
+
         users.forEach(u => {
           const tr = document.createElement('tr');
+          tr.dataset.rowId = u.id;
+          if (editingUserId && u.id === editingUserId) tr.classList.add('editing-row');
+
           tr.innerHTML = `
             <td>${u.id}</td>
-            <td><input class="form-control form-control-sm edit-username" data-id="${u.id}" value="${u.username}"/></td>
-            <td><input class="form-control form-control-sm edit-email"    data-id="${u.id}" value="${u.email}"/></td>
-            <td>
-              <select class="form-select form-select-sm edit-role" data-id="${u.id}">
-                <option value="USER" ${u.role==='USER'? 'selected':''}>USER</option>
-                <option value="ADMIN" ${u.role==='ADMIN'? 'selected':''}>ADMIN</option>
-              </select>
-            </td>
-            <td><input type="password" class="form-control form-control-sm edit-password" data-id="${u.id}" placeholder="••••••"/></td>
-            <td>
-              <button class="btn btn-sm btn-primary save-btn"   data-id="${u.id}">Save</button>
-              <button class="btn btn-sm btn-danger delete-btn"  data-id="${u.id}">Delete</button>
+            <td class="user-username cell-like" data-id="${u.id}">${u.username}</td>
+            <td class="user-email cell-like" data-id="${u.id}">${u.email}</td>
+            <td class="user-role cell-like" data-id="${u.id}">${u.role}</td>
+            <td class="d-flex gap-2">
+              <button class="btn btn-sm btn-primary edit-in-form" data-id="${u.id}">Edit</button>
+              <button class="btn btn-sm btn-danger delete-btn" data-id="${u.id}">Delete</button>
             </td>`;
           tbody.appendChild(tr);
         });
-        attachHandlers();
+
+        attachHandlers(users);
       } catch (e) {
         alert('Error loading users: ' + e);
       }
     }
 
-    function attachHandlers() {
-      document.querySelectorAll('.save-btn').forEach(btn => {
-        btn.onclick = async () => {
-          const id = btn.dataset.id;
-          const username = document.querySelector(`.edit-username[data-id="${id}"]`).value;
-          const email    = document.querySelector(`.edit-email[data-id="${id}"]`).value;
-          const role     = document.querySelector(`.edit-role[data-id="${id}"]`).value;
-          const pwdField = document.querySelector(`.edit-password[data-id="${id}"]`);
-          const password = pwdField.value;
-          const payload = { username, email, role };
-          if (password) payload.password = password;
-          try {
-            await authFetch(`/users/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-            loadUsers();
-          } catch (err) {
-            alert('❌ Update failed: ' + err.message);
-          }
+    function attachHandlers(cachedUsers) {
+      // Edit → copy row values into the bottom form and highlight row
+      document.querySelectorAll('.edit-in-form').forEach(btn => {
+        btn.onclick = () => {
+          const id = +btn.dataset.id;
+          const u = cachedUsers.find(x => x.id === id);
+          if (!u) return;
+
+          // copy values to form (ONLY editable place)
+          document.getElementById('newUsername').value = u.username;
+          document.getElementById('newEmail').value    = u.email;
+          document.getElementById('newRole').value     = u.role;
+          document.getElementById('newPassword').value = '';
+
+          editingUserId   = id;
+          editingUserName = u.username;
+          setFormMode('update');
+          highlightRow(id);
+
+          // bring form into view
+          document.getElementById('createForm')
+                  .scrollIntoView({behavior:'smooth', block:'center'});
         };
       });
 
+      // Delete
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.onclick = async () => {
           if (!confirm('Delete this user?')) return;
           try {
-            await authFetch(`/users/${btn.dataset.id}`, { method: 'DELETE' });
+            const id = +btn.dataset.id;
+            await authFetch(`/users/${id}`, { method: 'DELETE' });
+            if (editingUserId === id) setFormMode('create');
             loadUsers();
           } catch (err) {
             alert('❌ Delete failed: ' + err.message);
@@ -145,41 +260,96 @@
       });
     }
 
-    // —— DEBUGGED Create Form Handler ——
-    document.getElementById('createForm').onsubmit = async e => {
+    // Create / Update submit
+    document.getElementById('createForm').onsubmit = async (e) => {
       e.preventDefault();
+      clearMessages();
 
-      // 1) you clicked
-      //alert('🖱 Create button clicked');
+      const usernameField = document.getElementById('newUsername');
+      const emailField    = document.getElementById('newEmail');
+      const passwordField = document.getElementById('newPassword');
+      const roleField     = document.getElementById('newRole');
+      const usernameError = document.getElementById('usernameError');
+      const emailError    = document.getElementById('emailError');
+      const successBox    = document.getElementById('createSuccess');
 
-      // 2) build payload
-      const payload = {
-        username: document.getElementById('newUsername').value,
-        email:    document.getElementById('newEmail').value,
-        password: document.getElementById('newPassword').value,
-        role:     document.getElementById('newRole').value
-      };
-      //alert('📋 Payload: ' + JSON.stringify(payload));
+      const username = usernameField.value.trim();
+      const email    = emailField.value.trim();
+      const role     = roleField.value;
+      const password = passwordField.value;
 
-      // 3) try to send it
       try {
-        await authFetch('/users', {
-          method: 'POST',
-          body: JSON.stringify(payload)
-        });
-        alert('✅ User created successfully!');
-        e.target.reset();
+        const users = await authFetch('/users', { method: 'GET' });
+        const lowerU = username.toLowerCase(), lowerE = email.toLowerCase();
+
+        // exclude record being edited from duplicate checks
+        const usernameTaken = users.some(u =>
+          (editingUserId ? u.id !== editingUserId : true) &&
+          (u.username||'').toLowerCase() === lowerU
+        );
+        const emailTaken = users.some(u =>
+          (editingUserId ? u.id !== editingUserId : true) &&
+          (u.email||'').toLowerCase() === lowerE
+        );
+
+        let blocked = false;
+        if (usernameTaken){
+          usernameError.textContent = 'Username already exists.';
+          usernameError.classList.remove('d-none');
+          blocked = true;
+        }
+        if (emailTaken){
+          emailError.textContent = 'Email already in use.';
+          emailError.classList.remove('d-none');
+          blocked = true;
+        }
+        if (blocked) return;
+
+        if (editingUserId){ // update existing user
+          const payload = { username, email, role };
+          if (password) payload.password = password;
+          await authFetch(`/users/${editingUserId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+          });
+          successBox.textContent = 'User updated successfully.';
+          successBox.classList.remove('d-none');
+          setFormMode('create');
+        }else{ // create new user
+          await authFetch('/users', {
+            method: 'POST',
+            body: JSON.stringify({ username, email, password, role })
+          });
+          successBox.textContent = 'User created successfully.';
+          successBox.classList.remove('d-none');
+          e.target.reset();
+        }
+
         loadUsers();
       } catch (err) {
-        alert('❌ Failed to create user: ' + err.message);
+        const msg = (err.message || '').toLowerCase();
+        let shown = false;
+        if (msg.includes('username')) {
+          usernameError.textContent = 'Username already exists.';
+          usernameError.classList.remove('d-none');
+          shown = true;
+        }
+        if (msg.includes('email')) {
+          emailError.textContent = 'Email already in use.';
+          emailError.classList.remove('d-none');
+          shown = true;
+        }
+        if (!shown) {
+          emailError.textContent = editingUserId
+            ? 'Failed to update user.'
+            : 'Failed to create user.';
+          emailError.classList.remove('d-none');
+        }
       }
     };
 
-    // initial load
+    // Initial load
     loadUsers();
   </script>
 </body>
 </html>
-
-
-
