@@ -1,11 +1,10 @@
 package com.empress.usermanagementapi.config;
 
 import com.empress.usermanagementapi.repository.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
+    import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -24,23 +23,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // we use session + forms, but for this demo app CSRF is disabled
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authz -> authz
                 // static resources always public
                 .requestMatchers("/css/**", "/js/**").permitAll()
-
                 // auth + registration pages
                 .requestMatchers("/login", "/register").permitAll()
-
-                // forgot / reset password (explicit GET + POST)
-                .requestMatchers(HttpMethod.GET, "/forgot-password", "/reset-password").permitAll()
-                .requestMatchers(HttpMethod.POST, "/forgot-password", "/reset-password").permitAll()
-
+                // forgot / reset password (all methods and subpaths)
+                .requestMatchers("/forgot-password", "/forgot-password/**",
+                                 "/reset-password", "/reset-password/**").permitAll()
                 // dashboards
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
-
                 // everything else requires auth
                 .anyRequest().authenticated()
             )
