@@ -30,6 +30,7 @@ public class ForgotPasswordController {
 
     @GetMapping("/forgot-password")
     public String showForm(Model model) {
+        // Clear all messages on a fresh GET
         model.addAttribute("debugReceived", null);
         model.addAttribute("debugResetLink", null);
         model.addAttribute("message", null);
@@ -41,27 +42,37 @@ public class ForgotPasswordController {
                              @RequestParam String email,
                              Model model) {
 
+        // Show what was sent (for debugging)
         String received = "username=" + username + " email=" + email;
         model.addAttribute("debugReceived", received);
 
         Optional<User> opt = userRepo.findByUsernameAndEmail(username, email);
 
+        // Generic banner, regardless of whether the user exists
         model.addAttribute("message",
                 "If an account matches those details, you’ll receive an email shortly."
         );
 
         if (opt.isPresent()) {
+            // Create and store token in DB with expiry
             PasswordResetToken tokenEntity =
                     passwordResetService.createPasswordResetTokenForEmail(email);
-
             String token = tokenEntity.getToken();
 
+            // Adjust baseUrl to your deployed host as needed
             String baseUrl = "https://user-management-api-java.up.railway.app";
             String resetLink = baseUrl + "/reset-password?token=" + token;
 
+            // Show the link on the page for debugging
             model.addAttribute("debugResetLink", resetLink);
 
-            emailService.sendPasswordResetEmail(email, resetLink);
+            // Send the email. Wrap in try/catch so a failure does not abort the request.
+            try {
+                emailService.sendPasswordResetEmail(email, resetLink);
+            } catch (Exception e) {
+                // Log the exception; in real apps use a proper logger
+                System.err.println("Failed to send password reset email: " + e.getMessage());
+            }
         } else {
             model.addAttribute("debugResetLink", null);
         }
