@@ -3,7 +3,9 @@ package com.empress.usermanagementapi.controller;
 import com.empress.usermanagementapi.service.PasswordResetService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 public class ResetPasswordController {
@@ -19,9 +21,11 @@ public class ResetPasswordController {
         String error = passwordResetService.validatePasswordResetToken(token);
 
         if (error != null) {
+            // invalid / expired token
             model.addAttribute("message", error);
-            // token stays null → form will still render but hidden field empty
+            // token stays null -> hidden field empty
         } else {
+            // valid token -> form will submit it back
             model.addAttribute("token", token);
         }
 
@@ -35,11 +39,13 @@ public class ResetPasswordController {
         String error = passwordResetService.resetPassword(token, password);
 
         if (error != null) {
+            // still invalid / expired
             model.addAttribute("message", error);
             model.addAttribute("token", token);
             return "reset-password";
         }
 
+        // success -> back to login with banner
         return "redirect:/login?resetSuccess";
     }
 }
