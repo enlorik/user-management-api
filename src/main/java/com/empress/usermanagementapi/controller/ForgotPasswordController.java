@@ -44,6 +44,9 @@ public class ForgotPasswordController {
                              @RequestParam String email,
                              Model model) {
 
+        // debug line so we see it in Railway logs
+        System.out.println(">>> POST /forgot-password for username=" + username + ", email=" + email);
+
         // what we got from the browser (for your debug alerts)
         String received = "username=" + username + " email=" + email;
         model.addAttribute("debugReceived", received);
