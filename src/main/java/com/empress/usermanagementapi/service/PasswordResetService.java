@@ -13,6 +13,8 @@ import java.util.UUID;
 @Service
 public class PasswordResetService {
 
+    private static final long TOKEN_EXPIRY_HOURS = 24; // change if you want longer/shorter
+
     private final PasswordResetTokenRepository tokenRepo;
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
@@ -30,9 +32,9 @@ public class PasswordResetService {
             .orElseThrow(() -> new IllegalArgumentException("No user with email: " + email));
 
         String token = UUID.randomUUID().toString();
-        LocalDateTime expiry = LocalDateTime.now().plusHours(24); // change here if you want longer
+        LocalDateTime expiry = LocalDateTime.now().plusHours(TOKEN_EXPIRY_HOURS);
 
-        // If the user already has a token row, reuse it instead of inserting a new one
+        // Reuse existing row for this user if it exists, otherwise create a new one
         PasswordResetToken prt = tokenRepo.findByUser(user)
             .orElseGet(() -> {
                 PasswordResetToken t = new PasswordResetToken();
@@ -50,30 +52,62 @@ public class PasswordResetService {
     public String validatePasswordResetToken(String token) {
         String cleanToken = token == null ? null : token.trim();
 
-        return tokenRepo.findByToken(cleanToken)
-            .filter(prt -> !prt.isUsed())
-            .filter(prt -> prt.getExpiryDate().isAfter(LocalDateTime.now()))
-            .map(prt -> (String) null)  // null = valid
-            .orElse("Invalid or expired token");
+        if (cleanToken == null || cleanToken.isEmpty()) {
+            return "Invalid or expired token";
+        }
+
+        var opt = tokenRepo.findByToken(cleanToken);
+
+        if (opt.isEmpty()) {
+            return "Token not found";
+        }
+
+        PasswordResetToken prt = opt.get();
+
+        if (prt.isUsed()) {
+            return "Token already used";
+        }
+
+        if (prt.getExpiryDate().isBefore(LocalDateTime.now())) {
+            return "Token expired";
+        }
+
+        // valid
+        return null;
     }
 
     public String resetPassword(String token, String newPassword) {
         String cleanToken = token == null ? null : token.trim();
 
-        return tokenRepo.findByToken(cleanToken)
-            .filter(prt -> !prt.isUsed())
-            .filter(prt -> prt.getExpiryDate().isAfter(LocalDateTime.now()))
-            .map(prt -> {
-                User u = prt.getUser();
-                u.setPassword(passwordEncoder.encode(newPassword));
-                userRepo.save(u);
+        if (cleanToken == null || cleanToken.isEmpty()) {
+            return "Invalid or expired token";
+        }
 
-                // mark token as used instead of deleting it
-                prt.setUsed(true);
-                tokenRepo.save(prt);
+        var opt = tokenRepo.findByToken(cleanToken);
 
-                return (String) null;
-            })
-            .orElse("Invalid or expired token");
+        if (opt.isEmpty()) {
+            return "Token not found";
+        }
+
+        PasswordResetToken prt = opt.get();
+
+        if (prt.isUsed()) {
+            return "Token already used";
+        }
+
+        if (prt.getExpiryDate().isBefore(LocalDateTime.now())) {
+            return "Token expired";
+        }
+
+        // token is valid → change password
+        User u = prt.getUser();
+        u.setPassword(passwordEncoder.encode(newPassword));
+        userRepo.save(u);
+
+        // mark token as used
+        prt.setUsed(true);
+        tokenRepo.save(prt);
+
+        return null;
     }
 }
