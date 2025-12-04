@@ -6,6 +6,7 @@ import com.empress.usermanagementapi.repository.PasswordResetTokenRepository;
 import com.empress.usermanagementapi.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -27,30 +28,50 @@ public class PasswordResetService {
     public PasswordResetToken createPasswordResetTokenForEmail(String email) {
         User user = userRepo.findByEmail(email)
             .orElseThrow(() -> new IllegalArgumentException("No user with email: " + email));
+
         String token = UUID.randomUUID().toString();
-        PasswordResetToken prt = new PasswordResetToken(
-            token,
-            user,
-            LocalDateTime.now().plusHours(24)
-        );
+        LocalDateTime expiry = LocalDateTime.now().plusHours(24); // change here if you want longer
+
+        // If the user already has a token row, reuse it instead of inserting a new one
+        PasswordResetToken prt = tokenRepo.findByUser(user)
+            .orElseGet(() -> {
+                PasswordResetToken t = new PasswordResetToken();
+                t.setUser(user);
+                return t;
+            });
+
+        prt.setToken(token);
+        prt.setExpiryDate(expiry);
+        prt.setUsed(false);
+
         return tokenRepo.save(prt);
     }
 
     public String validatePasswordResetToken(String token) {
-        return tokenRepo.findByToken(token)
+        String cleanToken = token == null ? null : token.trim();
+
+        return tokenRepo.findByToken(cleanToken)
+            .filter(prt -> !prt.isUsed())
             .filter(prt -> prt.getExpiryDate().isAfter(LocalDateTime.now()))
-            .map(prt -> (String) null)
+            .map(prt -> (String) null)  // null = valid
             .orElse("Invalid or expired token");
     }
 
     public String resetPassword(String token, String newPassword) {
-        return tokenRepo.findByToken(token)
+        String cleanToken = token == null ? null : token.trim();
+
+        return tokenRepo.findByToken(cleanToken)
+            .filter(prt -> !prt.isUsed())
             .filter(prt -> prt.getExpiryDate().isAfter(LocalDateTime.now()))
             .map(prt -> {
                 User u = prt.getUser();
                 u.setPassword(passwordEncoder.encode(newPassword));
                 userRepo.save(u);
-                tokenRepo.delete(prt);
+
+                // mark token as used instead of deleting it
+                prt.setUsed(true);
+                tokenRepo.save(prt);
+
                 return (String) null;
             })
             .orElse("Invalid or expired token");
