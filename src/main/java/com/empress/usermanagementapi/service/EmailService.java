@@ -1,40 +1,72 @@
 package com.empress.usermanagementapi.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    // Comes from env var RESEND_API_KEY (Railway)
+    @Value("${resend.api.key}")
+    private String resendApiKey;
 
-    // use whatever is configured as spring.mail.username
-    @Value("${spring.mail.username}")
-    private String defaultFrom;
+    // Comes from env var RESEND_FROM (Railway)
+    @Value("${resend.from}")
+    private String resendFrom;   // e.g. "User Management <onboarding@resend.dev>"
+
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public void sendPasswordResetEmail(String to, String resetLink) {
-        SimpleMailMessage msg = new SimpleMailMessage();
-        msg.setTo(to);
+        String subject = "Password Reset Request";
+        String body =
+                "You requested to reset your password.\n\n" +
+                "Click the link below to set a new password:\n" +
+                resetLink + "\n\n" +
+                "If you didn't request this, you can ignore this email.";
 
-        // set a valid "from" address (important for Gmail)
-        if (defaultFrom != null && !defaultFrom.isBlank()) {
-            msg.setFrom(defaultFrom);
+        sendEmail(to, subject, body);
+    }
+
+    private void sendEmail(String to, String subject, String textBody) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("from", resendFrom);
+            payload.put("to", new String[]{to});
+            payload.put("subject", subject);
+            payload.put("text", textBody);
+
+            String json = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.resend.com/emails"))
+                    .header("Authorization", "Bearer " + resendApiKey)
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
+                    .build();
+
+            System.out.println("[MAIL] Sending email via Resend to " + to);
+            HttpResponse<String> response =
+                    httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                System.err.println("[MAIL] Resend error: HTTP " + response.statusCode()
+                        + " body=" + response.body());
+                throw new RuntimeException("Resend API error: " + response.statusCode());
+            }
+
+            System.out.println("[MAIL] Email sent via Resend, response: " + response.body());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send email via Resend", e);
         }
-
-        msg.setSubject("Password Reset Request");
-        msg.setText(
-            "You requested to reset your password.\n\n" +
-            "Click the link below to set a new password:\n" +
-            resetLink + "\n\n" +
-            "If you didn't request this, you can ignore this email."
-        );
-
-        System.out.println("[MAIL] Sending password reset to " + to);
-        mailSender.send(msg);
-        System.out.println("[MAIL] Password reset email sent (or queued) successfully");
     }
 }
