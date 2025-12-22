@@ -30,10 +30,9 @@ public class ForgotPasswordController {
 
     @GetMapping("/forgot-password")
     public String showForm(Model model) {
-        // Clear all messages on a fresh GET
-        model.addAttribute("debugReceived", null);
-        model.addAttribute("debugResetLink", null);
-        model.addAttribute("message", null);
+        // Clear messages on a fresh GET
+        model.addAttribute("error", null);
+        model.addAttribute("success", null);
         return "forgot-password";
     }
 
@@ -42,41 +41,40 @@ public class ForgotPasswordController {
                              @RequestParam String email,
                              Model model) {
 
-        // Show what was sent (for debugging)
-        String received = "username=" + username + " email=" + email;
-        model.addAttribute("debugReceived", received);
+        String trimmedUsername = username.trim();
+        String trimmedEmail = email.trim();
 
-        Optional<User> opt = userRepo.findByUsernameAndEmail(username, email);
-
-        // Generic banner, regardless of whether the user exists
-        model.addAttribute("message",
-                "If an account matches those details, you’ll receive an email shortly."
-        );
-
-        if (opt.isPresent()) {
-            // Create and store token in DB with expiry
-            PasswordResetToken tokenEntity =
-                    passwordResetService.createPasswordResetTokenForEmail(email);
-            String token = tokenEntity.getToken();
-
-            // Adjust baseUrl to your deployed host as needed
-            String baseUrl = "https://user-management-api-java.up.railway.app";
-            String resetLink = baseUrl + "/reset-password?token=" + token;
-
-            // Show the link on the page for debugging
-            model.addAttribute("debugResetLink", resetLink);
-
-            // Send the email. Wrap in try/catch so a failure does not abort the request.
-            try {
-                emailService.sendPasswordResetEmail(email, resetLink);
-            } catch (Exception e) {
-                // Log the exception; in real apps use a proper logger
-                System.err.println("Failed to send password reset email: " + e.getMessage());
-            }
-        } else {
-            model.addAttribute("debugResetLink", null);
+        if (trimmedUsername.isEmpty() || trimmedEmail.isEmpty()) {
+            model.addAttribute("error", "Username and email are required.");
+            return "forgot-password";
         }
 
+        // Check username + email combo
+        Optional<User> opt = userRepo.findByUsernameAndEmail(trimmedUsername, trimmedEmail);
+
+        if (opt.isEmpty()) {
+            // This is the part you were missing: explicit feedback
+            model.addAttribute("error", "No account found with that username and email.");
+            return "forgot-password";
+        }
+
+        // User exists, create token + send email
+        PasswordResetToken tokenEntity =
+                passwordResetService.createPasswordResetTokenForEmail(trimmedEmail);
+        String token = tokenEntity.getToken();
+
+        String baseUrl = "https://user-management-api-java.up.railway.app";
+        String resetLink = baseUrl + "/reset-password?token=" + token;
+
+        try {
+            emailService.sendPasswordResetEmail(trimmedEmail, resetLink);
+        } catch (Exception e) {
+            System.err.println("Failed to send password reset email: " + e.getMessage());
+            model.addAttribute("error", "Failed to send password reset email. Please try again later.");
+            return "forgot-password";
+        }
+
+        model.addAttribute("success", "Password reset link has been sent to your email.");
         return "forgot-password";
     }
 }
