@@ -15,11 +15,11 @@ import java.util.Map;
 @Service
 public class EmailService {
 
-    // Comes from env var RESEND_API_KEY (Railway)
+    // Comes from env var RESEND_API_KEY (Railway) -> property resend.api.key
     @Value("${resend.api.key}")
     private String resendApiKey;
 
-    // Comes from env var RESEND_FROM (Railway)
+    // Comes from env var RESEND_FROM (Railway) -> property resend.from
     @Value("${resend.from}")
     private String resendFrom;   // e.g. "User Management <onboarding@resend.dev>"
 
@@ -33,6 +33,17 @@ public class EmailService {
                 "Click the link below to set a new password:\n" +
                 resetLink + "\n\n" +
                 "If you didn't request this, you can ignore this email.";
+
+        sendEmail(to, subject, body);
+    }
+
+    public void sendVerificationEmail(String to, String verifyLink) {
+        String subject = "Verify your email";
+        String body =
+                "Welcome! Please verify your email address.\n\n" +
+                "Click the link below to verify your account:\n" +
+                verifyLink + "\n\n" +
+                "If you didn't create an account, you can ignore this email.";
 
         sendEmail(to, subject, body);
     }
