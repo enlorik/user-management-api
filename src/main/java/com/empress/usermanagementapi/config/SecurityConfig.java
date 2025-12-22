@@ -1,7 +1,7 @@
 package com.empress.usermanagementapi.config;
 
 import com.empress.usermanagementapi.repository.UserRepository;
-    import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,6 +32,8 @@ public class SecurityConfig {
                 // forgot / reset password (all methods and subpaths)
                 .requestMatchers("/forgot-password", "/forgot-password/**",
                                  "/reset-password", "/reset-password/**").permitAll()
+                // email verification link from the email
+                .requestMatchers("/verify-email", "/verify-email/**").permitAll()
                 // dashboards
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
@@ -77,11 +79,16 @@ public class SecurityConfig {
             if (u == null) {
                 throw new UsernameNotFoundException("No such user: " + username);
             }
+
+            // Block login if email is not verified
+            boolean disabled = !u.isVerified();
+
             return org.springframework.security.core.userdetails.User
                 .builder()
                 .username(u.getUsername())
                 .password(u.getPassword())
                 .roles(u.getRole().name())
+                .disabled(disabled)
                 .build();
         };
     }
