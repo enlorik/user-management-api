@@ -2,6 +2,7 @@ package com.empress.usermanagementapi.controller;
 
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.repository.UserRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,9 +27,10 @@ public class UserController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // return all users sorted by id (ascending)
     @GetMapping
     public List<User> getAllUsers() {
-        return userRepo.findAll();
+        return userRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
     }
 
     @PostMapping
