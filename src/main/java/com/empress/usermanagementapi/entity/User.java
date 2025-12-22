@@ -22,7 +22,8 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
-    @Column(nullable = false)
+    // allow nullable in DB, default false in Java
+    @Column
     private boolean verified = false;
 
     public User() {}
