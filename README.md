@@ -3,7 +3,7 @@
 A Spring Boot application for user registration, login, role-based access control, and account self-service.
 
 Deployed on Railway:  
-[https://user-management-api-java.up.railway.app/]
+[user-management-api](https://user-management-api-java.up.railway.app/)
 
 ---
 
