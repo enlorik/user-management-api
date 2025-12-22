@@ -82,7 +82,7 @@ public class UserController {
 
     // ——— Self-service endpoint ———
     @PutMapping("/me")
-    public ResponseEntity<User> updateMe(
+    public ResponseEntity<?> updateMe(
             @AuthenticationPrincipal org.springframework.security.core.userdetails.User principal,
             @RequestBody Map<String,String> body
     ) {
@@ -91,12 +91,38 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
 
+        // handle email change
         if (body.containsKey("email")) {
-            me.setEmail(body.get("email"));
+            String newEmail = body.get("email");
+            if (newEmail != null) {
+                newEmail = newEmail.trim();
+            }
+
+            if (newEmail == null || newEmail.isEmpty()) {
+                return ResponseEntity
+                        .badRequest()
+                        .body(Map.of("error", "Email cannot be empty."));
+            }
+
+            // if user is actually changing to a different email, enforce uniqueness
+            if (!newEmail.equalsIgnoreCase(me.getEmail())
+                    && userRepo.existsByEmail(newEmail)) {
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "Email is already in use."));
+            }
+
+            me.setEmail(newEmail);
         }
-        if (body.containsKey("password") && !body.get("password").isEmpty()) {
-            me.setPassword(passwordEncoder.encode(body.get("password")));
+
+        // handle password change
+        if (body.containsKey("password")) {
+            String rawPassword = body.get("password");
+            if (rawPassword != null && !rawPassword.isEmpty()) {
+                me.setPassword(passwordEncoder.encode(rawPassword));
+            }
         }
+
         User saved = userRepo.save(me);
         return ResponseEntity.ok(saved);
     }
