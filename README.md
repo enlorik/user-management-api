@@ -1,14 +1,11 @@
 # User Management API
 
-A Spring Boot application for user registration, login, role-based access control, and account self-service.
+A Spring Boot application for user registration, login, role-based access control, and simple account self-service.
 
 Deployed on Railway:  
 [user-management-api](https://user-management-api-java.up.railway.app/)
 
----
-
-Tech stack
-
+Tech stack:
 - Java 17
 - Spring Boot 3
 - Spring Security
@@ -17,22 +14,19 @@ Tech stack
 - Maven
 - Docker
 - Resend (for sending emails)
-- Railway (hosting for app + database)
+- Railway (hosting for app and database)
 
----
-
-What the app can do
-
+What the app does:
 - User registration
   - stores users in PostgreSQL
-  - passwords are hashed with BCrypt (not stored in plain text)
+  - passwords are hashed with BCrypt
   - sends an email verification link after registration
 - Login
   - form login at `/login`
   - users can only log in after verifying their email
-  - redirects:
-    - admin users → `/admin`
-    - normal users → `/user`
+  - redirect:
+    - admin users go to `/admin`
+    - normal users go to `/user`
 - Email verification
   - generates a unique token per user
   - sends a link `/verify-email?token=...`
@@ -40,7 +34,7 @@ What the app can do
     - marks the token as used
     - marks the user as verified
 - Password reset
-  - `/forgot-password` form (username + email must match)
+  - `/forgot-password` form (username and email must match)
   - creates a password reset token and emails a link
   - `/reset-password?token=...` page to set a new password
 - User management
@@ -52,27 +46,25 @@ What the app can do
     - user can change their own email and password
     - email change checks uniqueness
 
----
-
-Security rules (high level)
-
-- `/login`, `/register`, `/verify-email/**`, `/forgot-password/**`, `/reset-password/**` and `/css/**`, `/js/**` are public
-- `/admin/**` requires `ROLE_ADMIN`
-- `/user/**` requires `ROLE_USER` or `ROLE_ADMIN`
+Security rules (high level):
+- public:
+  - `/login`
+  - `/register`
+  - `/verify-email/**`
+  - `/forgot-password/**`
+  - `/reset-password/**`
+  - `/css/**` and `/js/**`
+- requires `ROLE_ADMIN`:
+  - `/admin/**`
+- requires `ROLE_USER` or `ROLE_ADMIN`:
+  - `/user/**`
 - all other endpoints require authentication
 - unverified users are treated as disabled accounts and cannot log in
 
----
-
-Running locally (summary)
-
-You need:
-
-- a PostgreSQL database
-- Resend API key and sender address (for the email features)
-
-Then:
-
-```bash
-mvn clean package
-java -jar target/user-management-api-*.jar
+Running locally (summary):
+- requires a PostgreSQL database
+- requires Resend API key and sender address for email features
+- build and run:
+  - run `mvn clean package`
+  - then run `java -jar target/user-management-api-*.jar`
+- then open `http://localhost:8080` in the browser
