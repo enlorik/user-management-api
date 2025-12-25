@@ -131,15 +131,23 @@ public class RateLimitConfig {
      */
     private int cleanupMap(Map<String, Bucket> bucketMap, Map<String, Long> lastAccessMap, long now, String endpoint) {
         int cleaned = 0;
+        
+        // Collect IPs to remove first to avoid ConcurrentModificationException
+        java.util.List<String> ipsToRemove = new java.util.ArrayList<>();
         for (Map.Entry<String, Long> entry : lastAccessMap.entrySet()) {
             if (now - entry.getValue() > CLEANUP_THRESHOLD_MS) {
-                String ip = entry.getKey();
-                bucketMap.remove(ip);
-                lastAccessMap.remove(ip);
-                cleaned++;
-                logger.debug("Removed expired bucket for IP {} on endpoint {}", ip, endpoint);
+                ipsToRemove.add(entry.getKey());
             }
         }
+        
+        // Remove collected IPs
+        for (String ip : ipsToRemove) {
+            bucketMap.remove(ip);
+            lastAccessMap.remove(ip);
+            cleaned++;
+            logger.debug("Removed expired bucket for IP {} on endpoint {}", ip, endpoint);
+        }
+        
         return cleaned;
     }
     
