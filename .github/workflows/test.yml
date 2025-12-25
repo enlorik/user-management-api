@@ -37,7 +37,7 @@ jobs:
           path: target/surefire-reports/
           retention-days: 30
       
-      - name: Clean test reports
+      - name: Clean test reports for next test category
         if: always()
         run: rm -rf target/surefire-reports/*
       
