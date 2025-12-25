@@ -68,3 +68,64 @@ Running locally (summary):
   - run `mvn clean package`
   - then run `java -jar target/user-management-api-*.jar`
 - then open `http://localhost:8080` in the browser
+
+## CI/CD and Test Reports
+
+The project uses GitHub Actions for continuous integration. Every push and pull request triggers automated testing with detailed reporting.
+
+### Accessing Test Reports
+
+1. **From GitHub Actions:**
+   - Navigate to the "Actions" tab in the repository
+   - Click on any workflow run to see the execution details
+   - Scroll down to the "Artifacts" section at the bottom of the page
+   - Download either:
+     - `unit-test-reports` - Contains unit test results
+     - `integration-test-reports` - Contains integration test results
+
+2. **Viewing HTML Reports:**
+   - Extract the downloaded artifact ZIP file
+   - Open `surefire-report.html` in your browser
+   - The report shows:
+     - Summary of all tests run
+     - Individual test results (pass/fail)
+     - Execution time for each test
+     - Stack traces for failed tests
+     - Success rate and statistics
+
+3. **Reading Workflow Logs:**
+   - Click on any workflow run in the Actions tab
+   - Expand the "Annotate Unit Test Failures" or "Annotate Integration Test Failures" steps
+   - View test summaries with emoji indicators:
+     - 📊 Total tests executed
+     - ✅ Number of tests passed
+     - ❌ Number of tests failed
+     - ⚠️ Number of tests with errors
+   - Failed tests are also annotated in the workflow summary with `::error` markers
+
+### Test Categories
+
+The CI workflow separates tests into two categories:
+
+- **Unit Tests:** Controller layer tests (`**/controller/**Test`)
+  - Fast execution
+  - Focus on individual component behavior
+  - No external dependencies
+
+- **Integration Tests:** Service, config, and application tests
+  - Tests interaction between components
+  - May use Spring context
+  - Validates end-to-end functionality
+
+### Running Tests Locally
+
+Generate the same HTML reports locally:
+```bash
+# Run tests
+mvn test
+
+# Generate HTML report
+mvn surefire-report:report
+
+# View report at target/site/surefire-report.html
+```

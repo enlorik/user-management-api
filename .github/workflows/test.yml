@@ -14,9 +14,14 @@ jobs:
       contents: read
     
     steps:
+      # Step 1: Checkout the repository code
+      # This step retrieves the source code from the repository
       - name: Checkout code
         uses: actions/checkout@v4
       
+      # Step 2: Set up Java Development Kit (JDK) 17
+      # Configures the Java environment needed to build and test the application
+      # Uses Temurin distribution and enables Maven dependency caching for faster builds
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -24,36 +29,147 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       
+      # Step 3: Run Unit Tests
+      # Executes unit tests for controller classes
+      # Uses continue-on-error to allow workflow to proceed even if tests fail
+      # This enables us to collect results and generate reports for all test categories
       - name: Run Unit Tests
         id: unit-tests
         run: mvn clean test -Dtest="**/controller/**Test"
         continue-on-error: true
       
+      # Step 4: Generate HTML Report for Unit Tests
+      # Creates human-readable HTML report from XML test results
+      # The report provides detailed test-by-test visibility
+      - name: Generate Unit Test HTML Report
+        if: always()
+        run: mvn surefire-report:report-only -DskipTests=true
+        continue-on-error: true
+      
+      # Step 5: Parse Unit Test Results and Add Annotations
+      # Analyzes test results and creates GitHub Actions annotations
+      # Annotations appear in the workflow logs and PR checks
+      - name: Annotate Unit Test Failures
+        if: always()
+        run: |
+          echo "::group::Unit Test Results"
+          if [ -d "target/surefire-reports" ]; then
+            # Count total tests, failures, and errors
+            TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'tests="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            FAILURES=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'failures="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            ERRORS=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'errors="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            
+            echo "📊 Total Unit Tests: ${TOTAL:-0}"
+            echo "✅ Passed: $((${TOTAL:-0} - ${FAILURES:-0} - ${ERRORS:-0}))"
+            echo "❌ Failed: ${FAILURES:-0}"
+            echo "⚠️  Errors: ${ERRORS:-0}"
+            
+            # Parse and annotate failures
+            for xml_file in target/surefire-reports/TEST-*.xml; do
+              if [ -f "$xml_file" ]; then
+                # Extract test failures and create annotations
+                grep -A 10 '<failure' "$xml_file" | while IFS= read -r line; do
+                  if [[ $line == *'<failure'* ]]; then
+                    TEST_NAME=$(echo "$line" | sed -n 's/.*testcase.*name="\([^"]*\)".*/\1/p')
+                    if [ ! -z "$TEST_NAME" ]; then
+                      echo "::error title=Unit Test Failed::Test '$TEST_NAME' failed"
+                    fi
+                  fi
+                done 2>/dev/null || true
+              fi
+            done
+          else
+            echo "No unit test reports found"
+          fi
+          echo "::endgroup::"
+        continue-on-error: true
+      
+      # Step 6: Upload Unit Test Reports as Artifacts
+      # Uploads both XML and HTML reports for download and viewing
+      # Reports are retained for 30 days and can be accessed from the Actions tab
       - name: Upload Unit Test Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-reports
-          path: target/surefire-reports/
+          path: |
+            target/surefire-reports/
           retention-days: 30
       
+      # Step 7: Clean test reports for next test category
+      # Removes unit test reports to ensure integration test results are kept separate
+      # This maintains clear separation between test categories
       - name: Clean test reports for next test category
         if: always()
         run: rm -rf target/surefire-reports/*
       
+      # Step 8: Run Integration Tests
+      # Executes integration tests for config, service, and application test classes
+      # continue-on-error allows the workflow to generate reports even if tests fail
       - name: Run Integration Tests
         id: integration-tests
         run: mvn test -Dtest="**/config/**Test,**/service/**Test,**/*ApplicationTests"
         continue-on-error: true
       
+      # Step 9: Generate HTML Report for Integration Tests
+      # Creates detailed HTML report for integration test results
+      - name: Generate Integration Test HTML Report
+        if: always()
+        run: mvn surefire-report:report-only -DskipTests=true
+        continue-on-error: true
+      
+      # Step 10: Parse Integration Test Results and Add Annotations
+      # Analyzes integration test results and creates workflow annotations
+      - name: Annotate Integration Test Failures
+        if: always()
+        run: |
+          echo "::group::Integration Test Results"
+          if [ -d "target/surefire-reports" ]; then
+            # Count total tests, failures, and errors
+            TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'tests="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            FAILURES=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'failures="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            ERRORS=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'errors="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            
+            echo "📊 Total Integration Tests: ${TOTAL:-0}"
+            echo "✅ Passed: $((${TOTAL:-0} - ${FAILURES:-0} - ${ERRORS:-0}))"
+            echo "❌ Failed: ${FAILURES:-0}"
+            echo "⚠️  Errors: ${ERRORS:-0}"
+            
+            # Parse and annotate failures
+            for xml_file in target/surefire-reports/TEST-*.xml; do
+              if [ -f "$xml_file" ]; then
+                # Extract test failures and create annotations
+                grep -A 10 '<failure' "$xml_file" | while IFS= read -r line; do
+                  if [[ $line == *'<failure'* ]]; then
+                    TEST_NAME=$(echo "$line" | sed -n 's/.*testcase.*name="\([^"]*\)".*/\1/p')
+                    if [ ! -z "$TEST_NAME" ]; then
+                      echo "::error title=Integration Test Failed::Test '$TEST_NAME' failed"
+                    fi
+                  fi
+                done 2>/dev/null || true
+              fi
+            done
+          else
+            echo "No integration test reports found"
+          fi
+          echo "::endgroup::"
+        continue-on-error: true
+      
+      # Step 11: Upload Integration Test Reports as Artifacts
+      # Uploads both XML and HTML reports for integration tests
+      # These are kept separate from unit test reports for clarity
       - name: Upload Integration Test Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-reports
-          path: target/surefire-reports/
+          path: |
+            target/surefire-reports/
           retention-days: 30
       
+      # Step 12: Check test results and fail workflow if needed
+      # Final step that fails the workflow if any test category failed
+      # This ensures CI/CD pipeline correctly reports test failures
       - name: Check test results
         if: steps.unit-tests.outcome == 'failure' || steps.integration-tests.outcome == 'failure'
         run: exit 1
