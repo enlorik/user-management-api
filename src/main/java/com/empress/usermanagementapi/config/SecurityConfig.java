@@ -23,7 +23,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf
+                // Disable CSRF for REST API endpoints (stateless)
+                .ignoringRequestMatchers("/users/**", "/auth/**")
+            )
             .authorizeHttpRequests(authz -> authz
                 // static resources always public
                 .requestMatchers("/css/**", "/js/**").permitAll()

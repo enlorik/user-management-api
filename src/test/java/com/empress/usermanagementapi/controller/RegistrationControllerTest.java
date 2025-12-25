@@ -35,6 +35,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithValidInput() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "validuser123")
                         .param("email", "valid@example.com")
                         .param("password", "securepassword"))
@@ -45,6 +46,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithEmptyUsername() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "")
                         .param("email", "valid@example.com")
                         .param("password", "securepassword"))
@@ -56,6 +58,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithInvalidUsernamePattern() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "invalid-user!")
                         .param("email", "valid@example.com")
                         .param("password", "securepassword"))
@@ -67,6 +70,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithEmptyEmail() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "validuser")
                         .param("email", "")
                         .param("password", "securepassword"))
@@ -78,6 +82,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithInvalidEmailFormat() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "validuser")
                         .param("email", "invalidemail")
                         .param("password", "securepassword"))
@@ -89,6 +94,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithEmptyPassword() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "validuser")
                         .param("email", "valid@example.com")
                         .param("password", ""))
@@ -100,6 +106,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithShortPassword() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "validuser")
                         .param("email", "valid@example.com")
                         .param("password", "short"))
@@ -112,6 +119,7 @@ class RegistrationControllerTest {
     void testRegisterWithTooLongPassword() throws Exception {
         String longPassword = "a".repeat(256);
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "validuser")
                         .param("email", "valid@example.com")
                         .param("password", longPassword))
@@ -128,6 +136,7 @@ class RegistrationControllerTest {
     @Test
     void testRegisterWithMultipleValidationErrors() throws Exception {
         mockMvc.perform(post("/register")
+                        .with(csrf())
                         .param("username", "")
                         .param("email", "invalidemail")
                         .param("password", "short"))

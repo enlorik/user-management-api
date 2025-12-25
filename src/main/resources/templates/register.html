@@ -55,6 +55,7 @@
     <h1>Create Account</h1>
 
     <form th:action="@{/register}" th:object="${userForm}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       
       <!-- USERNAME -->
       <div class="form-group">
