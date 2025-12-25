@@ -2,11 +2,14 @@ package com.empress.usermanagementapi.controller;
 
 import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
+import com.empress.usermanagementapi.model.RegistrationRequest;
 import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.EmailVerificationService;
 import com.empress.usermanagementapi.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 
@@ -27,20 +30,31 @@ public class RegistrationController {
 
     @PostMapping("/register")
     public String registerSubmit(
-            @ModelAttribute("userForm") User userForm,
+            @Valid @ModelAttribute("userForm") RegistrationRequest registrationRequest,
+            BindingResult bindingResult,
             Model model
     ) {
+        // check for validation errors first
+        if (bindingResult.hasErrors()) {
+            return "register";
+        }
+
         // check username first
-        if (userService.usernameExists(userForm.getUsername())) {
+        if (userService.usernameExists(registrationRequest.getUsername())) {
             model.addAttribute("usernameError", "Username already in use");
             return "register";
         }
         // then check email
-        if (userService.emailExists(userForm.getEmail())) {
+        if (userService.emailExists(registrationRequest.getEmail())) {
             model.addAttribute("emailError", "Email already in use");
             return "register";
         }
 
+        // Create user from validated DTO
+        User userForm = new User();
+        userForm.setUsername(registrationRequest.getUsername());
+        userForm.setEmail(registrationRequest.getEmail());
+        userForm.setPassword(registrationRequest.getPassword());
         userForm.setRole(Role.USER);
         // verified stays false by default in User
         User created = userService.create(userForm);
