@@ -92,6 +92,45 @@ This application implements CSRF (Cross-Site Request Forgery) protection to secu
 - For SPAs consuming REST APIs, consider implementing token-based authentication (JWT)
 - Regularly update Spring Security to get the latest security patches
 
+### Rate Limiting
+
+This application implements IP-based rate limiting on critical public endpoints to protect against brute force attacks and spam. Rate limiting uses the Bucket4j library with a token bucket algorithm.
+
+**Protected Endpoints:**
+- `/login` and `/auth/login`: 5 requests per minute
+- `/register`: 10 requests per 15 minutes
+- `/verify-email`: 20 requests per minute
+
+**How It Works:**
+- Each client IP address gets its own rate limit bucket per endpoint
+- When the limit is exceeded, the server returns HTTP 429 (Too Many Requests) with a `Retry-After` header
+- Buckets are isolated per endpoint, so limits on `/login` don't affect `/register`
+- Expired buckets are automatically cleaned up every 30 minutes
+
+**IP Address Detection:**
+- The filter prioritizes the `X-Forwarded-For` header (for proxy/load balancer scenarios)
+- Falls back to `RemoteAddr` if `X-Forwarded-For` is not available
+- Extracts the first IP from `X-Forwarded-For` when multiple IPs are present
+
+**Configuration:**
+Rate limits are defined in `RateLimitConfig.java`. To modify limits:
+1. Adjust the bandwidth configuration in the respective `createBucketFor*` methods
+2. Modify the cleanup threshold by changing `CLEANUP_THRESHOLD_MS` constant
+
+**Production Considerations:**
+- Monitor rate limit logs to detect potential attacks
+- Consider adjusting limits based on your use case and legitimate user behavior
+- For distributed deployments, consider using a distributed cache (Redis) for bucket storage
+- Rate limit logs are at WARN level when limits are exceeded and DEBUG level for successful requests
+
+**Testing Rate Limits:**
+```bash
+# Test login rate limit (5 requests per minute)
+for i in {1..6}; do curl -X POST http://localhost:8080/login; done
+
+# The 6th request will return HTTP 429 with Retry-After header
+```
+
 ## Development Setup
 
 ### Prerequisites
