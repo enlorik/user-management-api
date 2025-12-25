@@ -87,7 +87,7 @@ class TokenCleanupServiceTest {
         assertEquals(2, emailVerificationTokenRepository.count());
 
         // Run cleanup
-        long deletedCount = tokenCleanupService.cleanupExpiredEmailVerificationTokens(LocalDateTime.now());
+        int deletedCount = tokenCleanupService.cleanupExpiredEmailVerificationTokens(LocalDateTime.now());
 
         // Verify only expired token was deleted
         assertEquals(1, deletedCount);
@@ -124,7 +124,7 @@ class TokenCleanupServiceTest {
         assertEquals(2, passwordResetTokenRepository.count());
 
         // Run cleanup
-        long deletedCount = tokenCleanupService.cleanupExpiredPasswordResetTokens(LocalDateTime.now());
+        int deletedCount = tokenCleanupService.cleanupExpiredPasswordResetTokens(LocalDateTime.now());
 
         // Verify only expired token was deleted
         assertEquals(1, deletedCount);
@@ -164,8 +164,8 @@ class TokenCleanupServiceTest {
         passwordResetTokenRepository.save(passwordToken);
 
         // Run cleanup
-        long emailDeleted = tokenCleanupService.cleanupExpiredEmailVerificationTokens(LocalDateTime.now());
-        long passwordDeleted = tokenCleanupService.cleanupExpiredPasswordResetTokens(LocalDateTime.now());
+        int emailDeleted = tokenCleanupService.cleanupExpiredEmailVerificationTokens(LocalDateTime.now());
+        int passwordDeleted = tokenCleanupService.cleanupExpiredPasswordResetTokens(LocalDateTime.now());
 
         // Verify no tokens were deleted
         assertEquals(0, emailDeleted);

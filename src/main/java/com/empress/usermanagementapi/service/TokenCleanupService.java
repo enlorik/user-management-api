@@ -36,11 +36,11 @@ public class TokenCleanupService {
         
         try {
             // Clean up expired email verification tokens
-            long emailTokensDeleted = cleanupExpiredEmailVerificationTokens(now);
+            int emailTokensDeleted = cleanupExpiredEmailVerificationTokens(now);
             logger.info("Deleted {} expired email verification tokens", emailTokensDeleted);
             
             // Clean up expired password reset tokens
-            long passwordTokensDeleted = cleanupExpiredPasswordResetTokens(now);
+            int passwordTokensDeleted = cleanupExpiredPasswordResetTokens(now);
             logger.info("Deleted {} expired password reset tokens", passwordTokensDeleted);
             
             logger.info("Token cleanup completed successfully. Total tokens deleted: {}", 
@@ -56,7 +56,7 @@ public class TokenCleanupService {
      * @param currentTime the current time to compare against expiry dates
      * @return the number of tokens deleted
      */
-    public long cleanupExpiredEmailVerificationTokens(LocalDateTime currentTime) {
+    public int cleanupExpiredEmailVerificationTokens(LocalDateTime currentTime) {
         return emailVerificationTokenRepository.deleteByExpiryDateBefore(currentTime);
     }
 
@@ -66,7 +66,7 @@ public class TokenCleanupService {
      * @param currentTime the current time to compare against expiry dates
      * @return the number of tokens deleted
      */
-    public long cleanupExpiredPasswordResetTokens(LocalDateTime currentTime) {
+    public int cleanupExpiredPasswordResetTokens(LocalDateTime currentTime) {
         return passwordResetTokenRepository.deleteByExpiryDateBefore(currentTime);
     }
 }
