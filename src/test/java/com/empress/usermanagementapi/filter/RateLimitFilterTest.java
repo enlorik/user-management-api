@@ -243,28 +243,30 @@ class RateLimitFilterTest {
     }
     
     /**
-     * Test that the filter handles exceptions gracefully and doesn't block requests.
+     * Test that the filter handles IO exceptions when writing response but still enforces rate limit.
      */
     @Test
-    void testFilterHandlesExceptionsGracefully() throws Exception {
+    void testFilterHandlesIOExceptionWhenWritingResponse() throws Exception {
         // Setup: Create a scenario where response.getWriter() throws an exception
         when(request.getRequestURI()).thenReturn("/login");
         when(request.getRemoteAddr()).thenReturn("192.168.1.70");
+        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         
         // Make 5 requests to exhaust the limit
         for (int i = 0; i < 5; i++) {
             rateLimitFilter.doFilter(request, response, filterChain);
         }
         
-        // Setup: Make response.getWriter() throw an exception
-        when(response.getWriter()).thenThrow(new RuntimeException("Test exception"));
+        // Setup: Make response.getWriter() throw an IOException when rate limit is exceeded
+        when(response.getWriter()).thenThrow(new java.io.IOException("Test IO exception"));
         
-        // Execute: The 6th request should trigger rate limiting, which will try to write response
-        // The exception should be caught and the request should still pass through
+        // Execute: The 6th request should trigger rate limiting
+        // Even though writing the response fails, the rate limit should still be enforced
         rateLimitFilter.doFilter(request, response, filterChain);
         
-        // Verify: The request should pass through despite the exception
-        verify(filterChain, times(6)).doFilter(request, response);
+        // Verify: The 6th request should NOT pass through (rate limit enforced despite IO exception)
+        verify(filterChain, times(5)).doFilter(request, response);
+        verify(response, times(1)).setStatus(429);
     }
     
     /**

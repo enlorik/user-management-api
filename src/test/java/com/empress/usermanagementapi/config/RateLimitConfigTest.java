@@ -5,6 +5,9 @@ import io.github.bucket4j.ConsumptionProbe;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
+import java.util.Map;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -170,10 +173,10 @@ class RateLimitConfigTest {
         assertEquals(1, rateLimitConfig.getRegisterBucketCount());
         
         // Use reflection to manipulate last access times to simulate old buckets
-        java.lang.reflect.Field loginLastAccessField = RateLimitConfig.class.getDeclaredField("loginLastAccess");
+        Field loginLastAccessField = RateLimitConfig.class.getDeclaredField("loginLastAccess");
         loginLastAccessField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        java.util.Map<String, Long> loginLastAccess = (java.util.Map<String, Long>) loginLastAccessField.get(rateLimitConfig);
+        Map<String, Long> loginLastAccess = (Map<String, Long>) loginLastAccessField.get(rateLimitConfig);
         
         // Set one IP's last access to more than 1 hour ago
         long oneHourAgo = System.currentTimeMillis() - (61 * 60 * 1000);

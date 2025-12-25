@@ -53,9 +53,13 @@ public class RateLimitFilter implements Filter {
             return;
         }
         
+        String clientIp = null;
+        Bucket bucket = null;
+        ConsumptionProbe probe = null;
+        
         try {
-            String clientIp = extractClientIp(request);
-            Bucket bucket = resolveBucket(path, clientIp);
+            clientIp = extractClientIp(request);
+            bucket = resolveBucket(path, clientIp);
             
             if (bucket == null) {
                 // Should not happen, but if it does, allow the request
@@ -64,7 +68,7 @@ public class RateLimitFilter implements Filter {
                 return;
             }
             
-            ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+            probe = bucket.tryConsumeAndReturnRemaining(1);
             
             if (probe.isConsumed()) {
                 // Request is allowed
@@ -72,20 +76,26 @@ public class RateLimitFilter implements Filter {
                     clientIp, path, probe.getRemainingTokens());
                 chain.doFilter(request, response);
             } else {
-                // Rate limit exceeded
+                // Rate limit exceeded - try to send error response
                 long waitForRefill = probe.getNanosToWaitForRefill() / 1_000_000_000;
                 logger.warn("Rate limit exceeded for IP {} on {}: retry after {} seconds", 
                     clientIp, path, waitForRefill);
                 
-                response.setStatus(429); // HTTP 429 Too Many Requests
-                response.setHeader("Retry-After", String.valueOf(waitForRefill));
-                response.setContentType("application/json");
-                response.getWriter().write(String.format(
-                    "{\"error\":\"Rate limit exceeded\",\"retryAfter\":%d}", waitForRefill));
+                try {
+                    response.setStatus(429); // HTTP 429 Too Many Requests
+                    response.setHeader("Retry-After", String.valueOf(waitForRefill));
+                    response.setContentType("application/json");
+                    response.getWriter().write(String.format(
+                        "{\"error\":\"Rate limit exceeded\",\"retryAfter\":%d}", waitForRefill));
+                } catch (IOException e) {
+                    // Even if we can't write the response, the rate limit is still enforced
+                    logger.error("Failed to write rate limit error response for IP {} on path {}: {}", 
+                        clientIp, path, e.getMessage());
+                }
             }
             
         } catch (Exception e) {
-            // Log the exception but don't block the request
+            // Log the exception - for critical errors, still try to allow the request
             logger.error("Error in rate limit filter for path {}: {}", path, e.getMessage(), e);
             chain.doFilter(request, response);
         }

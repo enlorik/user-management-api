@@ -10,6 +10,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -133,7 +135,7 @@ public class RateLimitConfig {
         int cleaned = 0;
         
         // Collect IPs to remove first to avoid ConcurrentModificationException
-        java.util.List<String> ipsToRemove = new java.util.ArrayList<>();
+        List<String> ipsToRemove = new ArrayList<>();
         for (Map.Entry<String, Long> entry : lastAccessMap.entrySet()) {
             if (now - entry.getValue() > CLEANUP_THRESHOLD_MS) {
                 ipsToRemove.add(entry.getKey());
