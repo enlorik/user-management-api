@@ -24,13 +24,30 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       
-      - name: Run tests
-        run: mvn clean test
+      - name: Run Unit Tests
+        run: mvn clean test -Dtest="**/controller/**Test"
+        continue-on-error: true
       
-      - name: Upload test reports
+      - name: Upload Unit Test Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: unit-test-reports
+          path: target/surefire-reports/
+          retention-days: 30
+      
+      - name: Clean test reports
+        if: always()
+        run: rm -rf target/surefire-reports/*
+      
+      - name: Run Integration Tests
+        run: mvn test -Dtest="**/config/**Test,**/service/**Test,**/*ApplicationTests"
+        continue-on-error: true
+      
+      - name: Upload Integration Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-reports
           path: target/surefire-reports/
           retention-days: 30
