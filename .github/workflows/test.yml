@@ -58,26 +58,72 @@ jobs:
             TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'tests="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
             FAILURES=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'failures="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
             ERRORS=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'errors="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            SKIPPED=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'skipped="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            PASSED=$((${TOTAL:-0} - ${FAILURES:-0} - ${ERRORS:-0} - ${SKIPPED:-0}))
             
-            echo "📊 Total Unit Tests: ${TOTAL:-0}"
-            echo "✅ Passed: $((${TOTAL:-0} - ${FAILURES:-0} - ${ERRORS:-0}))"
-            echo "❌ Failed: ${FAILURES:-0}"
-            echo "⚠️  Errors: ${ERRORS:-0}"
+            echo "========================================"
+            echo "Unit Test Summary"
+            echo "========================================"
+            echo "Total Unit Tests: ${TOTAL:-0}"
+            echo "Passed: ${PASSED}"
+            echo "Failed: ${FAILURES:-0}"
+            echo "Errors: ${ERRORS:-0}"
+            echo "Skipped: ${SKIPPED:-0}"
+            echo "========================================"
+            echo ""
             
-            # Parse and annotate failures
+            # Parse and display all individual test results
+            echo "Individual Test Results:"
+            echo "----------------------------------------"
             for xml_file in target/surefire-reports/TEST-*.xml; do
               if [ -f "$xml_file" ]; then
-                # Extract test failures and create annotations
-                grep -A 10 '<failure' "$xml_file" | while IFS= read -r line; do
-                  if [[ $line == *'<failure'* ]]; then
-                    TEST_NAME=$(echo "$line" | sed -n 's/.*testcase.*name="\([^"]*\)".*/\1/p')
-                    if [ ! -z "$TEST_NAME" ]; then
-                      echo "::error title=Unit Test Failed::Test '$TEST_NAME' failed"
+                CLASS_NAME=$(grep '<testsuite' "$xml_file" | sed -n 's/.*name="\([^"]*\)".*/\1/p' | head -1)
+                echo ""
+                echo "Test Class: $CLASS_NAME"
+                
+                # Parse XML - extract testcase elements with proper attributes
+                grep '<testcase' "$xml_file" | while IFS= read -r line; do
+                  # Extract test name and time from the testcase line
+                  TEST_NAME=$(echo "$line" | grep -o 'name="[^"]*"' | head -1 | cut -d'"' -f2)
+                  TEST_TIME=$(echo "$line" | grep -o 'time="[^"]*"' | cut -d'"' -f2)
+                  
+                  if echo "$line" | grep -q '/>$'; then
+                    # Self-closing tag - test passed
+                    echo "  [PASS] $TEST_NAME (${TEST_TIME}s)"
+                  else
+                    # Multi-line element - need to check for failure/error/skipped
+                    TEMP_FILE=$(mktemp)
+                    # Use awk to extract the testcase block
+                    awk "/<testcase[^>]*name=\"${TEST_NAME}\"[^>]*>/,/<\/testcase>/" "$xml_file" > "$TEMP_FILE"
+                    
+                    if grep -q '<failure' "$TEMP_FILE"; then
+                      echo "  [FAIL] $TEST_NAME (${TEST_TIME}s)"
+                      FAILURE_MSG=$(grep '<failure' "$TEMP_FILE" | sed -n 's/.*message="\([^"]*\)".*/\1/p' | head -1)
+                      if [ ! -z "$FAILURE_MSG" ]; then
+                        echo "         Message: $FAILURE_MSG"
+                      fi
+                      echo "::error title=Unit Test Failed::Test '$CLASS_NAME.$TEST_NAME' failed"
+                    elif grep -q '<error' "$TEMP_FILE"; then
+                      echo "  [ERROR] $TEST_NAME (${TEST_TIME}s)"
+                      ERROR_MSG=$(grep '<error' "$TEMP_FILE" | sed -n 's/.*message="\([^"]*\)".*/\1/p' | head -1)
+                      if [ ! -z "$ERROR_MSG" ]; then
+                        echo "          Message: $ERROR_MSG"
+                      fi
+                      echo "::error title=Unit Test Error::Test '$CLASS_NAME.$TEST_NAME' had an error"
+                    elif grep -q '<skipped' "$TEMP_FILE"; then
+                      echo "  [SKIP] $TEST_NAME (${TEST_TIME}s)"
+                    else
+                      # No failure/error/skip found - test passed
+                      echo "  [PASS] $TEST_NAME (${TEST_TIME}s)"
                     fi
+                    
+                    rm -f "$TEMP_FILE"
                   fi
-                done 2>/dev/null || true
+                done
               fi
             done
+            echo ""
+            echo "========================================"
           else
             echo "No unit test reports found"
           fi
@@ -129,26 +175,72 @@ jobs:
             TOTAL=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'tests="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
             FAILURES=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'failures="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
             ERRORS=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'errors="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            SKIPPED=$(find target/surefire-reports -name "TEST-*.xml" -exec grep -o 'skipped="[^"]*"' {} \; | grep -o '[0-9]*' | awk '{s+=$1} END {print s}')
+            PASSED=$((${TOTAL:-0} - ${FAILURES:-0} - ${ERRORS:-0} - ${SKIPPED:-0}))
             
-            echo "📊 Total Integration Tests: ${TOTAL:-0}"
-            echo "✅ Passed: $((${TOTAL:-0} - ${FAILURES:-0} - ${ERRORS:-0}))"
-            echo "❌ Failed: ${FAILURES:-0}"
-            echo "⚠️  Errors: ${ERRORS:-0}"
+            echo "========================================"
+            echo "Integration Test Summary"
+            echo "========================================"
+            echo "Total Integration Tests: ${TOTAL:-0}"
+            echo "Passed: ${PASSED}"
+            echo "Failed: ${FAILURES:-0}"
+            echo "Errors: ${ERRORS:-0}"
+            echo "Skipped: ${SKIPPED:-0}"
+            echo "========================================"
+            echo ""
             
-            # Parse and annotate failures
+            # Parse and display all individual test results
+            echo "Individual Test Results:"
+            echo "----------------------------------------"
             for xml_file in target/surefire-reports/TEST-*.xml; do
               if [ -f "$xml_file" ]; then
-                # Extract test failures and create annotations
-                grep -A 10 '<failure' "$xml_file" | while IFS= read -r line; do
-                  if [[ $line == *'<failure'* ]]; then
-                    TEST_NAME=$(echo "$line" | sed -n 's/.*testcase.*name="\([^"]*\)".*/\1/p')
-                    if [ ! -z "$TEST_NAME" ]; then
-                      echo "::error title=Integration Test Failed::Test '$TEST_NAME' failed"
+                CLASS_NAME=$(grep '<testsuite' "$xml_file" | sed -n 's/.*name="\([^"]*\)".*/\1/p' | head -1)
+                echo ""
+                echo "Test Class: $CLASS_NAME"
+                
+                # Parse XML - extract testcase elements with proper attributes
+                grep '<testcase' "$xml_file" | while IFS= read -r line; do
+                  # Extract test name and time from the testcase line
+                  TEST_NAME=$(echo "$line" | grep -o 'name="[^"]*"' | head -1 | cut -d'"' -f2)
+                  TEST_TIME=$(echo "$line" | grep -o 'time="[^"]*"' | cut -d'"' -f2)
+                  
+                  if echo "$line" | grep -q '/>$'; then
+                    # Self-closing tag - test passed
+                    echo "  [PASS] $TEST_NAME (${TEST_TIME}s)"
+                  else
+                    # Multi-line element - need to check for failure/error/skipped
+                    TEMP_FILE=$(mktemp)
+                    # Use awk to extract the testcase block
+                    awk "/<testcase[^>]*name=\"${TEST_NAME}\"[^>]*>/,/<\/testcase>/" "$xml_file" > "$TEMP_FILE"
+                    
+                    if grep -q '<failure' "$TEMP_FILE"; then
+                      echo "  [FAIL] $TEST_NAME (${TEST_TIME}s)"
+                      FAILURE_MSG=$(grep '<failure' "$TEMP_FILE" | sed -n 's/.*message="\([^"]*\)".*/\1/p' | head -1)
+                      if [ ! -z "$FAILURE_MSG" ]; then
+                        echo "         Message: $FAILURE_MSG"
+                      fi
+                      echo "::error title=Integration Test Failed::Test '$CLASS_NAME.$TEST_NAME' failed"
+                    elif grep -q '<error' "$TEMP_FILE"; then
+                      echo "  [ERROR] $TEST_NAME (${TEST_TIME}s)"
+                      ERROR_MSG=$(grep '<error' "$TEMP_FILE" | sed -n 's/.*message="\([^"]*\)".*/\1/p' | head -1)
+                      if [ ! -z "$ERROR_MSG" ]; then
+                        echo "          Message: $ERROR_MSG"
+                      fi
+                      echo "::error title=Integration Test Error::Test '$CLASS_NAME.$TEST_NAME' had an error"
+                    elif grep -q '<skipped' "$TEMP_FILE"; then
+                      echo "  [SKIP] $TEST_NAME (${TEST_TIME}s)"
+                    else
+                      # No failure/error/skip found - test passed
+                      echo "  [PASS] $TEST_NAME (${TEST_TIME}s)"
                     fi
+                    
+                    rm -f "$TEMP_FILE"
                   fi
-                done 2>/dev/null || true
+                done
               fi
             done
+            echo ""
+            echo "========================================"
           else
             echo "No integration test reports found"
           fi
