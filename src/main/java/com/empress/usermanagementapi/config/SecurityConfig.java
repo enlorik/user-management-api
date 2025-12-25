@@ -27,6 +27,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 // static resources always public
                 .requestMatchers("/css/**", "/js/**").permitAll()
+                // Swagger/OpenAPI endpoints
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 // auth + registration pages
                 .requestMatchers("/login", "/register").permitAll()
                 // forgot / reset password (all methods and subpaths)
