@@ -127,11 +127,18 @@ The project uses GitHub Actions for continuous integration. Every push and pull 
 3. **Reading Workflow Logs:**
    - Click on any workflow run in the Actions tab
    - Expand the "Annotate Unit Test Failures" or "Annotate Integration Test Failures" steps
-   - View test summaries with emoji indicators:
-     - 📊 Total tests executed
-     - ✅ Number of tests passed
-     - ❌ Number of tests failed
-     - ⚠️ Number of tests with errors
+   - View detailed test summaries including:
+     - Total tests executed
+     - Number of tests passed
+     - Number of tests failed
+     - Number of tests with errors
+     - Number of tests skipped
+   - Individual test results are displayed with:
+     - `[PASS]` - Test passed successfully
+     - `[FAIL]` - Test failed with failure message
+     - `[ERROR]` - Test encountered an error
+     - `[SKIP]` - Test was skipped
+     - Execution time for each test
    - Failed tests are also annotated in the workflow summary with `::error` markers
 
 ### Test Categories
