@@ -57,10 +57,7 @@ public class TokenCleanupService {
      * @return the number of tokens deleted
      */
     public long cleanupExpiredEmailVerificationTokens(LocalDateTime currentTime) {
-        long countBefore = emailVerificationTokenRepository.count();
-        emailVerificationTokenRepository.deleteByExpiryDateBefore(currentTime);
-        long countAfter = emailVerificationTokenRepository.count();
-        return countBefore - countAfter;
+        return emailVerificationTokenRepository.deleteByExpiryDateBefore(currentTime);
     }
 
     /**
@@ -70,9 +67,6 @@ public class TokenCleanupService {
      * @return the number of tokens deleted
      */
     public long cleanupExpiredPasswordResetTokens(LocalDateTime currentTime) {
-        long countBefore = passwordResetTokenRepository.count();
-        passwordResetTokenRepository.deleteByExpiryDateBefore(currentTime);
-        long countAfter = passwordResetTokenRepository.count();
-        return countBefore - countAfter;
+        return passwordResetTokenRepository.deleteByExpiryDateBefore(currentTime);
     }
 }
