@@ -107,6 +107,8 @@ public class RateLimitFilter implements Filter {
     
     /**
      * Determine if the given path should be rate limited.
+     * Uses exact matching for /login and /register,
+     * and prefix matching for /auth/login and /verify-email to handle query parameters.
      */
     private boolean shouldRateLimit(String path) {
         return path.equals("/login") || 

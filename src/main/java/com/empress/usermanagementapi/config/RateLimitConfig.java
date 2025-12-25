@@ -133,6 +133,8 @@ public class RateLimitConfig {
     
     /**
      * Helper method to cleanup expired entries from a bucket map.
+     * Uses a two-pass approach: collect IPs to remove, then remove them.
+     * This is safe for ConcurrentHashMap and allows per-IP logging.
      */
     private int cleanupMap(Map<String, Bucket> bucketMap, Map<String, Long> lastAccessMap, long now, String endpoint) {
         int cleaned = 0;
@@ -145,7 +147,7 @@ public class RateLimitConfig {
             }
         }
         
-        // Remove collected IPs
+        // Remove collected IPs from both maps and log each removal
         for (String ip : ipsToRemove) {
             bucketMap.remove(ip);
             lastAccessMap.remove(ip);
