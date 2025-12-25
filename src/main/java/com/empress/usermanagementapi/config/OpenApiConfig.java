@@ -24,6 +24,7 @@ public class OpenApiConfig {
 
         Contact contact = new Contact();
         contact.setName("User Management API Team");
+        contact.setUrl("https://github.com/enlorik/user-management-api");
 
         Info info = new Info()
                 .title("User Management API")
