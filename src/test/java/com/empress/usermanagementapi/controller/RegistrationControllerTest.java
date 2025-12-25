@@ -49,7 +49,8 @@ class RegistrationControllerTest {
                         .param("email", "valid@example.com")
                         .param("password", "securepassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("register"));
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "username"));
     }
 
     @Test
@@ -59,7 +60,8 @@ class RegistrationControllerTest {
                         .param("email", "valid@example.com")
                         .param("password", "securepassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("register"));
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "username"));
     }
 
     @Test
@@ -69,7 +71,8 @@ class RegistrationControllerTest {
                         .param("email", "")
                         .param("password", "securepassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("register"));
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "email"));
     }
 
     @Test
@@ -79,7 +82,8 @@ class RegistrationControllerTest {
                         .param("email", "invalidemail")
                         .param("password", "securepassword"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("register"));
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "email"));
     }
 
     @Test
@@ -89,7 +93,8 @@ class RegistrationControllerTest {
                         .param("email", "valid@example.com")
                         .param("password", ""))
                 .andExpect(status().isOk())
-                .andExpect(view().name("register"));
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
     }
 
     @Test
@@ -99,7 +104,8 @@ class RegistrationControllerTest {
                         .param("email", "valid@example.com")
                         .param("password", "short"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("register"));
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
     }
 
     @Test
@@ -110,6 +116,26 @@ class RegistrationControllerTest {
                         .param("email", "valid@example.com")
                         .param("password", longPassword))
                 .andExpect(status().isOk())
-                .andExpect(view().name("register"));
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
+    }
+
+    /**
+     * Test that validation errors are exposed to the model for the view.
+     * This verifies that the controller properly adds validation error details
+     * so they can be displayed to users.
+     */
+    @Test
+    void testRegisterWithMultipleValidationErrors() throws Exception {
+        mockMvc.perform(post("/register")
+                        .param("username", "")
+                        .param("email", "invalidemail")
+                        .param("password", "short"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "username"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "email"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"))
+                .andExpect(model().attributeExists("validationErrors"));
     }
 }
