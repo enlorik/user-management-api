@@ -1,11 +1,21 @@
-package com.empress.usermanagementapi.model;
+package com.empress.usermanagementapi.dto;
 
+import com.empress.usermanagementapi.entity.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-public class RegistrationRequest {
+/**
+ * Data Transfer Object for creating a new user via the REST API.
+ * This class encapsulates user data with Bean Validation annotations to ensure
+ * data integrity before processing.
+ * 
+ * When used with @Valid annotation in REST controllers, validation errors will be
+ * automatically caught by the GlobalExceptionHandler and translated into structured
+ * error responses.
+ */
+public class CreateUserRequest {
 
     @NotEmpty(message = "Username is required")
     @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
@@ -20,8 +30,12 @@ public class RegistrationRequest {
     @Size(min = 6, max = 255, message = "Password must be between 6 and 255 characters")
     private String password;
 
-    public RegistrationRequest() {
+    private Role role;
+
+    public CreateUserRequest() {
     }
+
+    // Getters and setters
 
     public String getUsername() {
         return username;
@@ -45,5 +59,13 @@ public class RegistrationRequest {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
     }
 }
