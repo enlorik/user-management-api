@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
+@Table(name = "email_verification_token", indexes = {
+    @Index(name = "idx_email_verification_token", columnList = "token")
+})
 public class EmailVerificationToken {
 
     @Id
