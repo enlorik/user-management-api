@@ -31,6 +31,9 @@ class RegistrationControllerTest {
 
     @MockBean
     private EmailService emailService;
+    
+    @MockBean
+    private com.empress.usermanagementapi.config.RateLimitConfig rateLimitConfig;
 
     @Test
     void testRegisterWithValidInput() throws Exception {
