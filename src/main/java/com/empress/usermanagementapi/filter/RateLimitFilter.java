@@ -78,6 +78,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
      * Extract the client IP address from the request.
      * Checks X-Forwarded-For header first (for proxied requests),
      * then falls back to the remote address.
+     * 
+     * Note: In production environments behind a reverse proxy or load balancer,
+     * consider validating the X-Forwarded-For header against trusted proxy IPs
+     * or using a more robust IP extraction strategy to prevent header spoofing.
+     * For now, this implementation trusts the X-Forwarded-For header which is
+     * suitable for the Railway deployment environment where the header is set
+     * by the platform's reverse proxy.
      */
     private String getClientIp(HttpServletRequest request) {
         String xfHeader = request.getHeader("X-Forwarded-For");

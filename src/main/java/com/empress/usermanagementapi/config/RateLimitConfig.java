@@ -4,8 +4,11 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,11 +16,34 @@ import java.util.concurrent.ConcurrentHashMap;
  * Configuration for rate limiting different endpoints.
  * This class provides different rate limit configurations for various endpoints
  * to protect against abuse while maintaining usability.
+ * 
+ * Includes automatic cleanup of unused buckets to prevent memory leaks.
  */
 @Configuration
+@EnableScheduling
 public class RateLimitConfig {
 
-    private final Map<String, Map<String, Bucket>> endpointBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, BucketWrapper>> endpointBuckets = new ConcurrentHashMap<>();
+    
+    // Cleanup buckets not accessed for 1 hour
+    private static final long BUCKET_EXPIRY_MILLIS = 60 * 60 * 1000;
+
+    /**
+     * Wrapper class to track last access time for cleanup purposes.
+     */
+    private static class BucketWrapper {
+        final Bucket bucket;
+        volatile long lastAccessTime;
+
+        BucketWrapper(Bucket bucket) {
+            this.bucket = bucket;
+            this.lastAccessTime = System.currentTimeMillis();
+        }
+
+        void updateAccessTime() {
+            this.lastAccessTime = System.currentTimeMillis();
+        }
+    }
 
     /**
      * Get or create a bucket for a specific endpoint and IP address.
@@ -27,9 +53,35 @@ public class RateLimitConfig {
      * @return A Bucket configured with the appropriate rate limit for this endpoint
      */
     public Bucket resolveBucket(String endpoint, String ip) {
-        return endpointBuckets
+        BucketWrapper wrapper = endpointBuckets
             .computeIfAbsent(endpoint, k -> new ConcurrentHashMap<>())
-            .computeIfAbsent(ip, k -> createBucket(endpoint));
+            .computeIfAbsent(ip, k -> new BucketWrapper(createBucket(endpoint)));
+        
+        wrapper.updateAccessTime();
+        return wrapper.bucket;
+    }
+
+    /**
+     * Periodic cleanup of expired buckets to prevent memory leaks.
+     * Runs every hour and removes buckets not accessed in the last hour.
+     */
+    @Scheduled(fixedRate = 60 * 60 * 1000) // Run every hour
+    public void cleanupExpiredBuckets() {
+        long now = System.currentTimeMillis();
+        int removedCount = 0;
+        
+        for (Map.Entry<String, Map<String, BucketWrapper>> endpointEntry : endpointBuckets.entrySet()) {
+            Map<String, BucketWrapper> ipBuckets = endpointEntry.getValue();
+            
+            ipBuckets.entrySet().removeIf(entry -> {
+                if (now - entry.getValue().lastAccessTime > BUCKET_EXPIRY_MILLIS) {
+                    return true;
+                }
+                return false;
+            });
+            
+            removedCount += ipBuckets.size();
+        }
     }
 
     /**
