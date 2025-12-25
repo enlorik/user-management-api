@@ -1,7 +1,10 @@
 package com.empress.usermanagementapi.controller;
 
+import com.empress.usermanagementapi.dto.CreateUserRequest;
+import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.repository.UserRepository;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * REST controller for managing user resources.
+ * 
+ * This controller provides CRUD operations for users and uses Bean Validation
+ * to ensure data integrity. Validation errors are automatically handled by the
+ * GlobalExceptionHandler and returned as structured JSON responses.
+ */
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -33,22 +43,42 @@ public class UserController {
         return userRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
     }
 
+    /**
+     * Creates a new user with validation.
+     * 
+     * This endpoint validates the user creation request using Bean Validation.
+     * If validation fails, the GlobalExceptionHandler automatically catches the
+     * exception and returns a structured error response with details about which
+     * fields failed validation.
+     * 
+     * After validation passes, it checks for duplicate username/email before
+     * creating the user.
+     * 
+     * @param request The user creation request with validation annotations
+     * @return ResponseEntity with the created user or error details
+     */
     @PostMapping
-    public ResponseEntity<?> createUser(@RequestBody User user) {
+    public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
         // duplicate-username guard
-        if (userRepo.existsByUsername(user.getUsername())) {
+        if (userRepo.existsByUsername(request.getUsername())) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this username already exists"));
         }
         // duplicate-email guard
-        if (userRepo.existsByEmail(user.getEmail())) {
+        if (userRepo.existsByEmail(request.getEmail())) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this email already exists"));
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        // Create user entity from validated request
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(request.getRole() != null ? request.getRole() : Role.USER);
+        
         User saved = userRepo.save(user);
         return ResponseEntity
                 .created(URI.create("/users/" + saved.getId()))
