@@ -32,6 +32,10 @@ public class RateLimitFilter implements Filter {
     
     private static final Logger logger = LoggerFactory.getLogger(RateLimitFilter.class);
     
+    // HTTP 429 Too Many Requests status code
+    // Note: Jakarta Servlet API doesn't define SC_TOO_MANY_REQUESTS constant
+    private static final int HTTP_TOO_MANY_REQUESTS = 429;
+    
     private final RateLimitConfig rateLimitConfig;
     
     public RateLimitFilter(RateLimitConfig rateLimitConfig) {
@@ -82,7 +86,7 @@ public class RateLimitFilter implements Filter {
                     clientIp, path, waitForRefill);
                 
                 try {
-                    response.setStatus(429); // HTTP 429 Too Many Requests
+                    response.setStatus(HTTP_TOO_MANY_REQUESTS);
                     response.setHeader("Retry-After", String.valueOf(waitForRefill));
                     response.setContentType("application/json");
                     response.getWriter().write(String.format(

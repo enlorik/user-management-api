@@ -43,7 +43,10 @@ public class RateLimitConfig {
     private final Map<String, Long> verifyEmailLastAccess = new ConcurrentHashMap<>();
     
     // Cleanup threshold: remove buckets not accessed for 1 hour
-    private static final long CLEANUP_THRESHOLD_MS = 60 * 60 * 1000;
+    private static final long CLEANUP_THRESHOLD_MS = 60 * 60 * 1000L;
+    
+    // Cleanup interval: run cleanup every 30 minutes
+    private static final long CLEANUP_INTERVAL_MS = 30 * 60 * 1000L;
     
     /**
      * Get or create a rate limit bucket for the /login endpoint.
@@ -109,7 +112,7 @@ public class RateLimitConfig {
      * Cleanup expired buckets every 30 minutes.
      * Removes buckets that haven't been accessed for more than 1 hour.
      */
-    @Scheduled(fixedRate = 30 * 60 * 1000) // Run every 30 minutes
+    @Scheduled(fixedRate = CLEANUP_INTERVAL_MS)
     public void cleanupExpiredBuckets() {
         long now = System.currentTimeMillis();
         int cleaned = 0;
