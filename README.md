@@ -87,7 +87,6 @@ docker run --name user-mgmt-postgres \
 
 Or using Docker Compose, create a `docker-compose.yml` file:
 ```yaml
-version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
