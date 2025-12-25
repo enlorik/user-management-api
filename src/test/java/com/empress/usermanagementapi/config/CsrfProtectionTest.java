@@ -145,20 +145,31 @@ public class CsrfProtectionTest {
                 new TestUserRequest("testuser", "test@example.com", "password123", "USER")
         );
 
-        // The request will fail for other reasons (null mocks), but not due to CSRF (403)
-        // We're just verifying that the request gets past CSRF protection
-        try {
-            mockMvc.perform(post("/users")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(userJson));
-        } catch (Exception e) {
-            // Check if the underlying cause is not a 403
-            String message = e.getMessage();
-            if (message != null && message.contains("403")) {
-                throw new AssertionError("Received 403 Forbidden - CSRF protection should be disabled for /users/*");
-            }
-            // Other exceptions are expected due to mocks
-        }
+        // Create a mock user to avoid NullPointerException
+        com.empress.usermanagementapi.entity.User mockUser = new com.empress.usermanagementapi.entity.User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testuser");
+        mockUser.setEmail("test@example.com");
+
+        // Mock the repository to return false for duplicates and a saved user
+        org.mockito.Mockito.when(userRepository.existsByUsername(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(false);
+        org.mockito.Mockito.when(userRepository.existsByEmail(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(false);
+        org.mockito.Mockito.when(userRepository.save(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(mockUser);
+
+        // The request should not return 403 (CSRF forbidden)
+        // It should succeed or return other error codes, but not 403
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(userJson))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 403) {
+                        throw new AssertionError("Request returned 403 Forbidden - CSRF protection should be disabled for /users/*");
+                    }
+                });
     }
 
     @Test
@@ -169,19 +180,31 @@ public class CsrfProtectionTest {
                 new TestEmailUpdate("newemail@example.com")
         );
 
-        // The request will fail for other reasons (null mocks), but not due to CSRF (403)
-        try {
-            mockMvc.perform(put("/users/me")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(updateJson));
-        } catch (Exception e) {
-            // Check if the underlying cause is not a 403
-            String message = e.getMessage();
-            if (message != null && message.contains("403")) {
-                throw new AssertionError("Received 403 Forbidden - CSRF protection should be disabled for /users/*");
-            }
-            // Other exceptions are expected due to mocks
-        }
+        // Create a mock user to avoid NullPointerException
+        com.empress.usermanagementapi.entity.User mockUser = new com.empress.usermanagementapi.entity.User();
+        mockUser.setId(1L);
+        mockUser.setUsername("testuser");
+        mockUser.setEmail("old@example.com");
+
+        // Mock the repository to return the user and allow save
+        org.mockito.Mockito.when(userRepository.findByUsername(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(mockUser);
+        org.mockito.Mockito.when(userRepository.existsByEmail(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(false);
+        org.mockito.Mockito.when(userRepository.save(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(mockUser);
+
+        // The request should not return 403 (CSRF forbidden)
+        // It should succeed with 200 or return other error codes, but not 403
+        mockMvc.perform(put("/users/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJson))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 403) {
+                        throw new AssertionError("Request returned 403 Forbidden - CSRF protection should be disabled for /users/*");
+                    }
+                });
     }
 
     // Helper classes for JSON serialization
