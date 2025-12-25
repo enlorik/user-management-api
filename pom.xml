@@ -32,7 +32,7 @@
 			<artifactId>thymeleaf-spring6</artifactId>
 		</dependency>
 
-		<!-- H2 in-memory DB for development -->
+		<!-- H2 in-memory DB for development and testing -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
