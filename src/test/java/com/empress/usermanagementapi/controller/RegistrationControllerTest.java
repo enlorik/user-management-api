@@ -1,5 +1,6 @@
 package com.empress.usermanagementapi.controller;
 
+import com.empress.usermanagementapi.config.RateLimitConfig;
 import com.empress.usermanagementapi.model.RegistrationRequest;
 import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.EmailVerificationService;
@@ -31,6 +32,9 @@ class RegistrationControllerTest {
 
     @MockBean
     private EmailService emailService;
+
+    @MockBean
+    private RateLimitConfig rateLimitConfig;
 
     @Test
     void testRegisterWithValidInput() throws Exception {

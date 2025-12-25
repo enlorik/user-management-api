@@ -61,6 +61,22 @@ Security rules (high level):
 - all other endpoints require authentication
 - unverified users are treated as disabled accounts and cannot log in
 
+Rate Limiting:
+- Protects critical endpoints from abuse (brute force attacks, spam, etc.)
+- Rate limits are enforced per IP address
+- Endpoints with rate limiting:
+  - `/login` and `/auth/login`: 5 requests per minute (strict - prevents brute force)
+  - `/register`: 10 requests per 15 minutes (moderate - prevents spam registrations)
+  - `/verify-email`: 20 requests per minute (lenient but protected)
+- When rate limit is exceeded:
+  - Returns HTTP 429 (Too Many Requests)
+  - Includes `Retry-After` header with wait time in seconds
+  - Includes `X-Rate-Limit-Retry-After-Seconds` header
+  - Returns JSON error message with retry information
+- All successful requests include `X-Rate-Limit-Remaining` header
+- Rate limits are tracked separately for each IP address
+- Uses Bucket4j library for efficient token bucket rate limiting
+
 Running locally (summary):
 - requires a PostgreSQL database
 - requires Resend API key and sender address for email features
