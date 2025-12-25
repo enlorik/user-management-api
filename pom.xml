@@ -32,11 +32,16 @@
 			<artifactId>thymeleaf-spring6</artifactId>
 		</dependency>
 
-		<!-- H2 in-memory DB for development -->
+		<!-- H2 in-memory DB for development and testing -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
 		</dependency>
 
 		<!-- JPA + Hibernate support -->
