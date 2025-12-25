@@ -91,6 +91,34 @@ class UserControllerValidationTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    void testCreateUser_InvalidUsernamePattern_ReturnsValidationError() throws Exception {
+        CreateUserRequest request = new CreateUserRequest();
+        request.setUsername("invalid-user!");
+        request.setEmail("test@example.com");
+        request.setPassword("securepass123");
+
+        MvcResult result = mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().size() > 0);
+        
+        // Verify username error with pattern constraint
+        boolean foundUsernamePatternError = errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("username") && 
+                                   error.getMessage().contains("only letters and numbers"));
+        assertTrue(foundUsernamePatternError, "Should have pattern validation error for username");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     void testCreateUser_InvalidEmail_ReturnsValidationError() throws Exception {
         CreateUserRequest request = new CreateUserRequest();
         request.setUsername("validuser");
