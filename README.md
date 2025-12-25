@@ -61,6 +61,37 @@ Security rules (high level):
 - all other endpoints require authentication
 - unverified users are treated as disabled accounts and cannot log in
 
+## Security Features
+
+### CSRF Protection
+
+This application implements CSRF (Cross-Site Request Forgery) protection to secure form-based endpoints while maintaining stateless REST API functionality.
+
+**Configuration:**
+- **Form-based endpoints** (login, register, forgot-password, reset-password) require CSRF tokens
+- **REST API endpoints** (`/users/*`, `/auth/*`) are exempt from CSRF protection as they are designed to be stateless
+
+**CSRF Token Implementation:**
+- All HTML forms automatically include CSRF tokens via Thymeleaf: `<input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>`
+- Spring Security validates these tokens on form submission
+- Missing or invalid CSRF tokens result in a 403 Forbidden response
+
+**REST API Security:**
+- REST APIs (`/users/*`, `/auth/*`) use stateless authentication
+- These endpoints are configured to ignore CSRF protection
+- API security relies on role-based access control and authentication
+- Recommended to use additional security measures like JWT tokens for production REST APIs
+
+**Testing:**
+- All form submissions in tests must include `.with(csrf())` to simulate CSRF token inclusion
+- See `CsrfProtectionTest.java` for comprehensive CSRF verification tests
+
+**Best Practices:**
+- Never disable CSRF for session-based authentication endpoints
+- Use HTTPS in production to prevent man-in-the-middle attacks
+- For SPAs consuming REST APIs, consider implementing token-based authentication (JWT)
+- Regularly update Spring Security to get the latest security patches
+
 Running locally (summary):
 - requires a PostgreSQL database
 - requires Resend API key and sender address for email features
