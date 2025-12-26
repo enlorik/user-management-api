@@ -56,6 +56,138 @@
       padding:.25rem .5rem;
       font-size:.9rem;
     }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 992px) {
+      .container {
+        padding: 0 12px;
+      }
+
+      /* Make table wrapper more mobile-friendly */
+      .users-scroll {
+        height: auto;
+        max-height: 400px;
+        overflow-x: auto;
+      }
+
+      /* Allow horizontal scroll for table on smaller screens */
+      .users-scroll table {
+        min-width: 600px;
+      }
+
+      /* Adjust table column widths */
+      .users-scroll thead th:nth-child(1) { width: 50px; }
+      .users-scroll thead th:nth-child(2) { width: 150px; }
+      .users-scroll thead th:nth-child(3) { width: auto; }
+      .users-scroll thead th:nth-child(4) { width: 100px; }
+      .users-scroll thead th:nth-child(5) { width: 140px; }
+
+      /* Make form inputs stack vertically on tablets */
+      #createForm .col-md-3,
+      #createForm .col-md-1,
+      #createForm .col-md-2 {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+
+      .btn-tight {
+        height: 44px;
+        font-size: 16px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      h2, h3 {
+        font-size: 22px;
+      }
+
+      /* Navbar adjustments */
+      .navbar-brand {
+        font-size: 18px;
+      }
+
+      .navbar .btn {
+        font-size: 14px;
+        padding: 8px 12px;
+      }
+
+      /* Reduce table scroll height on mobile */
+      .users-scroll {
+        max-height: 300px;
+      }
+
+      /* Make table cells more compact */
+      .table td, .table th {
+        padding: .4rem .5rem;
+        font-size: .85rem;
+      }
+
+      .cell-like {
+        padding: .2rem .4rem;
+        font-size: .85rem;
+      }
+
+      /* Make form inputs touch-friendly */
+      .form-control, .form-select {
+        padding: 12px;
+        font-size: 16px;
+        min-height: 44px;
+      }
+
+      /* Make action buttons larger and stack */
+      .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 8px !important;
+      }
+
+      .d-flex.gap-2 .btn {
+        width: 100%;
+        min-height: 36px;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .container {
+        padding: 0 8px;
+        margin-top: 12px !important;
+      }
+
+      h2, h3 {
+        font-size: 20px;
+      }
+
+      .navbar-brand {
+        font-size: 16px;
+      }
+
+      /* Further reduce table scroll height */
+      .users-scroll {
+        max-height: 250px;
+      }
+
+      /* Make table even more compact */
+      .table td, .table th {
+        padding: .3rem .4rem;
+        font-size: .8rem;
+      }
+
+      .cell-like {
+        padding: .15rem .3rem;
+        font-size: .8rem;
+      }
+
+      /* Stack form on very small screens */
+      #createForm .col-12 {
+        margin-bottom: 12px;
+      }
+
+      /* Smaller buttons in table */
+      .d-flex.gap-2 .btn {
+        font-size: 13px;
+        padding: 6px 10px;
+        min-height: 32px;
+      }
+    }
   </style>
 </head>
 <body>

@@ -35,6 +35,59 @@
     .links { text-align: center; margin-top: 16px; }
     .links a { color: #4a90e2; text-decoration: none; margin: 0 8px; }
     .links a:hover { text-decoration: underline; }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 768px) {
+      .page-wrapper {
+        max-width: 100%;
+        margin: 20px 16px;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      h1 { 
+        font-size: 24px; 
+        margin-bottom: 20px; 
+      }
+
+      input { 
+        padding: 12px; 
+        font-size: 16px; 
+      }
+
+      .btn { 
+        padding: 12px; 
+        font-size: 16px; 
+        min-height: 44px; /* iOS touch target recommendation */
+      }
+
+      .links { 
+        margin-top: 20px; 
+      }
+
+      .links a { 
+        display: block; 
+        margin: 8px 0; 
+        padding: 8px;
+        font-size: 15px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-wrapper {
+        margin: 12px;
+      }
+
+      .container {
+        padding: 12px;
+      }
+
+      h1 { 
+        font-size: 22px; 
+      }
+    }
   </style>
 </head>
 <body>
