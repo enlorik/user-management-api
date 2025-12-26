@@ -4,128 +4,345 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard – User Management</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-
+  <link rel="stylesheet" th:href="@{/css/styles.css}" />
   <style>
-    /* message boxes */
-    .form-error{
-      color:#842029;background:#f8d7da;border:1px solid #f5c2c7;border-radius:4px;
-      padding:6px 10px;margin-top:4px;font-size:.9rem;
-    }
-    .form-success{
-      color:#0f5132;background:#d1e7dd;border:1px solid #badbcc;border-radius:4px;
-      padding:10px 15px;margin-top:20px;font-size:1rem;
-    }
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; }
 
-    /* compact create/update button */
-    .btn-tight{width:100%;height:38px;}
-
-    /* scrollable users table wrapper (fixed height so form stays put) */
-    .users-scroll{
-      height:420px;
-      overflow-y:auto;
-      border:1px solid rgba(0,0,0,.075);
-      border-radius:.5rem;
+    /* Navigation bar */
+    .navbar {
+      background: #333;
+      color: #fff;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-    /* sticky header inside scroll */
-    .users-scroll thead th{
-      position:sticky; top:0; z-index:2; background:#f8f9fa;
+    .navbar-brand {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #fff;
+      text-decoration: none;
     }
-
-    /* keep layout stable where messages appear */
-    .msg-reserve{min-height:44px;} /* ~ one error/success box height */
-
-    /* tighter table rows */
-    .table td, .table th { padding:.55rem .75rem; }
-
-    /* highlight the row being edited (no shape change, just tint) */
-    .editing-row{
-      background:#cfe2ff;
-      transition:background .15s ease;
+    .logout-btn {
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid #fff;
+      border-radius: 4px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
     }
-    .editing-row .cell-like{
-      background-color:#e7f1ff;
-      border-color:#9ec5fe;
+    .logout-btn:hover {
+      background: rgba(255,255,255,0.1);
     }
 
-    /* cells look a bit like inputs but are read-only */
-    .cell-like{
-      background-color:#fff;
-      border:1px solid #dee2e6;
-      border-radius:.25rem;
-      padding:.25rem .5rem;
-      font-size:.9rem;
+    /* Main content wrapper */
+    .page-wrapper {
+      max-width: 1200px;
+      margin: 30px auto;
+      padding: 0 20px;
+    }
+
+    .container {
+      padding: 24px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+
+    h2 { margin-bottom: 20px; color: #333; font-size: 1.5rem; }
+    h3 { margin-bottom: 16px; margin-top: 24px; color: #333; font-size: 1.25rem; }
+
+    /* Table styles */
+    .table-wrapper {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin-bottom: 20px;
+    }
+    .users-scroll {
+      max-height: 420px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #f8f9fa;
+      padding: 12px 8px;
+      text-align: left;
+      border-bottom: 2px solid #ddd;
+      font-weight: bold;
+      color: #333;
+      font-size: 14px;
+    }
+    tbody td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+      color: #555;
+    }
+    tbody tr:hover {
+      background: #f8f9fa;
+    }
+    .editing-row {
+      background: #e7f1ff !important;
+      transition: background 0.15s ease;
+    }
+    .cell-like {
+      background-color: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 0.9rem;
+    }
+    .editing-row .cell-like {
+      background-color: #e7f1ff;
+      border-color: #9ec5fe;
+    }
+
+    /* Form styles */
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+    label {
+      display: block;
+      margin-bottom: 4px;
+      font-weight: bold;
+      color: #555;
+      font-size: 13px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .btn-primary {
+      background: #4a90e2;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #357ab8;
+    }
+    .btn-success {
+      background: #28a745;
+      color: #fff;
+    }
+    .btn-success:hover {
+      background: #218838;
+    }
+    .btn-danger {
+      background: #dc3545;
+      color: #fff;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+    .btn-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Alerts */
+    .alert {
+      padding: 10px 15px;
+      border-radius: 4px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .alert-success {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .alert-danger {
+      background: #fdecea;
+      color: #b71c1c;
+    }
+    .d-none {
+      display: none;
+    }
+
+    .msg-reserve {
+      min-height: 44px;
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 10px 15px;
+      }
+      .navbar-brand {
+        font-size: 1.1rem;
+      }
+      .page-wrapper {
+        margin: 15px auto;
+        padding: 0 10px;
+      }
+      .container {
+        padding: 16px;
+      }
+      h2 {
+        font-size: 1.3rem;
+      }
+      h3 {
+        font-size: 1.1rem;
+      }
+      .users-scroll {
+        max-height: 300px;
+      }
+      table {
+        min-width: 500px;
+        font-size: 12px;
+      }
+      thead th, tbody td {
+        padding: 8px 6px;
+        font-size: 12px;
+      }
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .btn-actions {
+        flex-direction: column;
+        gap: 6px;
+      }
+      .btn-sm {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .navbar {
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px 10px;
+      }
+      .container {
+        padding: 12px;
+      }
+      h2 {
+        font-size: 1.2rem;
+      }
+      table {
+        min-width: 450px;
+      }
+      thead th, tbody td {
+        padding: 6px 4px;
+        font-size: 11px;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Navbar -->
-  <nav class="navbar navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">Admin Dashboard</a>
-      <form class="d-flex">
-        <a class="btn btn-outline-light" href="/logout">Logout</a>
-      </form>
-    </div>
+  <!-- Navigation bar -->
+  <nav class="navbar">
+    <a class="navbar-brand" href="#">Admin Dashboard</a>
+    <a class="logout-btn" href="/logout">Logout</a>
   </nav>
 
-  <div class="container mt-4">
-    <h2>All Users</h2>
+  <div class="page-wrapper">
+    <div class="container">
+      <h2>All Users</h2>
 
-    <!-- SCROLLABLE TABLE (fixed height so form below doesn't jump) -->
-    <div class="users-scroll shadow-sm">
-      <table class="table table-hover mb-0">
-        <thead class="table-light">
-        <tr>
-          <th style="width:70px">ID</th>
-          <th style="width:220px">Username</th>
-          <th>Email</th>
-          <th style="width:130px">Role</th>
-          <th style="width:140px">Actions</th>
-        </tr>
-        </thead>
-        <tbody id="usersTableBody"></tbody>
-      </table>
-    </div>
+      <!-- SCROLLABLE TABLE -->
+      <div class="table-wrapper">
+        <div class="users-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:70px">ID</th>
+                <th style="width:150px">Username</th>
+                <th>Email</th>
+                <th style="width:100px">Role</th>
+                <th style="width:140px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
 
-    <hr/>
-    <!-- this title will change between Create / Edit -->
-    <h3 id="formTitle">Create New User</h3>
+      <hr/>
+      <h3 id="formTitle">Create New User</h3>
 
-    <!-- CREATE / UPDATE FORM (ONLY place where editing happens) -->
-    <form id="createForm" class="row g-3">
-      <div class="col-md-3">
-        <input type="text" id="newUsername" class="form-control" placeholder="Username" required/>
-        <div id="usernameError" class="form-error d-none"></div>
-      </div>
-      <div class="col-md-3">
-        <input type="email" id="newEmail" class="form-control" placeholder="Email" required/>
-        <div id="emailError" class="form-error d-none"></div>
-      </div>
-      <div class="col-md-3">
-        <input type="password" id="newPassword" class="form-control" placeholder="Password"/>
-      </div>
-      <div class="col-md-1">
-        <select id="newRole" class="form-select">
-          <option value="USER">USER</option>
-          <option value="ADMIN">ADMIN</option>
-        </select>
-      </div>
-      <div class="col-md-2 d-grid">
-        <button id="createBtn" type="submit" class="btn btn-success btn-tight">Create</button>
-      </div>
-    </form>
+      <!-- CREATE / UPDATE FORM -->
+      <form id="createForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="newUsername">Username</label>
+            <input type="text" id="newUsername" placeholder="Username" required/>
+            <div id="usernameError" class="alert alert-danger d-none" style="margin-top: 4px; padding: 6px 10px; font-size: 12px;"></div>
+          </div>
+          <div class="form-group">
+            <label for="newEmail">Email</label>
+            <input type="email" id="newEmail" placeholder="Email" required/>
+            <div id="emailError" class="alert alert-danger d-none" style="margin-top: 4px; padding: 6px 10px; font-size: 12px;"></div>
+          </div>
+          <div class="form-group">
+            <label for="newPassword">Password</label>
+            <input type="password" id="newPassword" placeholder="Password"/>
+          </div>
+          <div class="form-group">
+            <label for="newRole">Role</label>
+            <select id="newRole">
+              <option value="USER">USER</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+          </div>
+          <div class="form-group" style="display: flex; align-items: flex-end;">
+            <button id="createBtn" type="submit" class="btn btn-success" style="width: 100%;">Create</button>
+          </div>
+        </div>
+      </form>
 
-    <!-- reserved gap to avoid layout jump + success box uses same slot -->
-    <div class="msg-reserve">
-      <div id="createSuccess" class="form-success d-none">User created successfully.</div>
+      <!-- reserved gap to avoid layout jump + success box -->
+      <div class="msg-reserve">
+        <div id="createSuccess" class="alert alert-success d-none">User created successfully.</div>
+      </div>
     </div>
   </div>
 
   <script>
     const API = '';
-    let editingUserId   = null;   // when set, the Create button acts as Update
-    let editingUserName = null;   // for heading text
+    let editingUserId   = null;
+    let editingUserName = null;
 
     async function authFetch(path, opts = {}) {
       opts.credentials = 'include';
@@ -158,7 +375,7 @@
       if(row) row.classList.add('editing-row');
     }
 
-    function setFormMode(mode){ // 'create' | 'update'
+    function setFormMode(mode){
       const btn        = document.getElementById('createBtn');
       const title      = document.getElementById('formTitle');
       const passwordEl = document.getElementById('newPassword');
@@ -203,10 +420,10 @@
 
           tr.innerHTML = `
             <td>${u.id}</td>
-            <td class="user-username cell-like" data-id="${u.id}">${u.username}</td>
-            <td class="user-email cell-like" data-id="${u.id}">${u.email}</td>
-            <td class="user-role cell-like" data-id="${u.id}">${u.role}</td>
-            <td class="d-flex gap-2">
+            <td class="cell-like">${u.username}</td>
+            <td class="cell-like">${u.email}</td>
+            <td class="cell-like">${u.role}</td>
+            <td class="btn-actions">
               <button class="btn btn-sm btn-primary edit-in-form" data-id="${u.id}">Edit</button>
               <button class="btn btn-sm btn-danger delete-btn" data-id="${u.id}">Delete</button>
             </td>`;
@@ -220,14 +437,12 @@
     }
 
     function attachHandlers(cachedUsers) {
-      // Edit → copy row values into the bottom form and highlight row
       document.querySelectorAll('.edit-in-form').forEach(btn => {
         btn.onclick = () => {
           const id = +btn.dataset.id;
           const u = cachedUsers.find(x => x.id === id);
           if (!u) return;
 
-          // copy values to form (ONLY editable place)
           document.getElementById('newUsername').value = u.username;
           document.getElementById('newEmail').value    = u.email;
           document.getElementById('newRole').value     = u.role;
@@ -238,13 +453,11 @@
           setFormMode('update');
           highlightRow(id);
 
-          // bring form into view
           document.getElementById('createForm')
                   .scrollIntoView({behavior:'smooth', block:'center'});
         };
       });
 
-      // Delete
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.onclick = async () => {
           if (!confirm('Delete this user?')) return;
@@ -260,7 +473,6 @@
       });
     }
 
-    // Create / Update submit
     document.getElementById('createForm').onsubmit = async (e) => {
       e.preventDefault();
       clearMessages();
@@ -282,7 +494,6 @@
         const users = await authFetch('/users', { method: 'GET' });
         const lowerU = username.toLowerCase(), lowerE = email.toLowerCase();
 
-        // exclude record being edited from duplicate checks
         const usernameTaken = users.some(u =>
           (editingUserId ? u.id !== editingUserId : true) &&
           (u.username||'').toLowerCase() === lowerU
@@ -305,7 +516,7 @@
         }
         if (blocked) return;
 
-        if (editingUserId){ // update existing user
+        if (editingUserId){
           const payload = { username, email, role };
           if (password) payload.password = password;
           await authFetch(`/users/${editingUserId}`, {
@@ -315,7 +526,7 @@
           successBox.textContent = 'User updated successfully.';
           successBox.classList.remove('d-none');
           setFormMode('create');
-        }else{ // create new user
+        }else{
           await authFetch('/users', {
             method: 'POST',
             body: JSON.stringify({ username, email, password, role })
@@ -348,7 +559,6 @@
       }
     };
 
-    // Initial load
     loadUsers();
   </script>
 </body>

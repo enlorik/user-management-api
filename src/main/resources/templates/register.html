@@ -4,107 +4,91 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Create Account – User Management</title>
-  <!-- If you have a global stylesheet, swap this out for your own CSS link -->
+  <link rel="stylesheet" th:href="@{/css/styles.css}" />
   <style>
     body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; }
-    .container {
+
+    /* wrapper that controls width/centering for both card and alerts */
+    .page-wrapper {
       max-width: 400px;
       margin: 80px auto;
+    }
+
+    .container {
       padding: 20px;
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
+
     h1 { text-align: center; margin-bottom: 24px; color: #333; }
     .form-group { margin-bottom: 16px; }
     label { display: block; margin-bottom: 4px; font-weight: bold; color: #555; }
-    input {
-      width: 100%;
-      padding: 8px;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 14px;
-    }
-    .btn {
-      width: 100%;
-      padding: 10px;
-      margin-top: 8px;
-      background: #4a90e2;
-      border: none;
-      border-radius: 4px;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-    }
+    input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    .btn { width: 100%; padding: 10px; background: #4a90e2; border: none; border-radius: 4px; color: #fff; font-size: 16px; cursor: pointer; }
     .btn:hover { background: #357ab8; }
-    .alert-danger { 
-      background: #fdecea; 
-      color: #b71c1c; 
-      padding: 10px; 
-      border-radius: 4px; 
-      margin-top: 8px;
-    }
+
+    .alert { padding: 10px; border-radius: 4px; margin-top: 8px; }
+    .alert-danger { background: #fdecea; color: #b71c1c; }
+
     .links { text-align: center; margin-top: 16px; }
-    .links a { color: #4a90e2; text-decoration: none; font-size: 14px; }
+    .links a { color: #4a90e2; text-decoration: none; margin: 0 8px; }
     .links a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Create Account</h1>
+  <div class="page-wrapper">
 
-    <form th:action="@{/register}" th:object="${userForm}" method="post">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-      
-      <!-- USERNAME -->
-      <div class="form-group">
-        <label for="username">Username</label>
-        <input
-          type="text"
-          id="username"
-          th:field="*{username}"
-          placeholder="Enter a username"
-          required
-          autofocus />
-        <div th:if="${usernameError}"
-             class="alert-danger"
-             th:text="${usernameError}">
+    <!-- register card -->
+    <div class="container">
+      <h1>Create Account</h1>
+
+      <form th:action="@{/register}" th:object="${userForm}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            th:field="*{username}"
+            placeholder="Enter a username"
+            required
+            autofocus />
         </div>
-      </div>
 
-      <!-- EMAIL -->
-      <div class="form-group">
-        <label for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          th:field="*{email}"
-          placeholder="Enter your email"
-          required />
-        <div th:if="${emailError}"
-             class="alert-danger"
-             th:text="${emailError}">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            th:field="*{email}"
+            placeholder="Enter your email"
+            required />
         </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            th:field="*{password}"
+            placeholder="Choose a password"
+            required />
+        </div>
+
+        <button type="submit" class="btn">Create Account</button>
+      </form>
+
+      <div class="links">
+        <a th:href="@{/login}">← Back to Sign In</a>
       </div>
-
-      <!-- PASSWORD -->
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input
-          type="password"
-          id="password"
-          th:field="*{password}"
-          placeholder="Choose a password"
-          required />
-      </div>
-
-      <button type="submit" class="btn">Create Account</button>
-    </form>
-
-    <div class="links">
-      <a th:href="@{/login}">← Back to Sign In</a>
     </div>
+
+    <!-- alerts below the card, same width, not changing card height -->
+    <div th:if="${usernameError}" class="alert alert-danger" th:text="${usernameError}"></div>
+    <div th:if="${emailError}" class="alert alert-danger" th:text="${emailError}"></div>
+
   </div>
 </body>
 </html>
