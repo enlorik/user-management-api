@@ -55,17 +55,17 @@ public class EmailVerificationService {
     public String verifyToken(String tokenValue) {
         var opt = tokenRepo.findByToken(tokenValue);
         if (opt.isEmpty()) {
-            return "Invalid verification link.";
+            return "The provided verification link is invalid. Please check the link or request a new one.";
         }
 
         EmailVerificationToken token = opt.get();
 
         if (token.isUsed()) {
-            return "This verification link has already been used.";
+            return "This verification link has already been used. You cannot use it again.";
         }
 
         if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
-            return "This verification link has expired.";
+            return "The verification link has expired. Please request a new verification link.";
         }
 
         User user = token.getUser();
