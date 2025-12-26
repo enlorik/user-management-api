@@ -53,23 +53,23 @@ public class PasswordResetService {
         String cleanToken = token == null ? null : token.trim();
 
         if (cleanToken == null || cleanToken.isEmpty()) {
-            return "Invalid or expired token";
+            return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
         var opt = tokenRepo.findByToken(cleanToken);
 
         if (opt.isEmpty()) {
-            return "Token not found";
+            return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
         PasswordResetToken prt = opt.get();
 
         if (prt.isUsed()) {
-            return "Token already used";
+            return "This token has already been used. You must request a new password reset.";
         }
 
         if (prt.getExpiryDate().isBefore(LocalDateTime.now())) {
-            return "Token expired";
+            return "The reset password link has expired. Please request a new one.";
         }
 
         // valid
@@ -80,23 +80,23 @@ public class PasswordResetService {
         String cleanToken = token == null ? null : token.trim();
 
         if (cleanToken == null || cleanToken.isEmpty()) {
-            return "Invalid or expired token";
+            return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
         var opt = tokenRepo.findByToken(cleanToken);
 
         if (opt.isEmpty()) {
-            return "Token not found";
+            return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
         PasswordResetToken prt = opt.get();
 
         if (prt.isUsed()) {
-            return "Token already used";
+            return "This token has already been used. You must request a new password reset.";
         }
 
         if (prt.getExpiryDate().isBefore(LocalDateTime.now())) {
-            return "Token expired";
+            return "The reset password link has expired. Please request a new one.";
         }
 
         // token is valid → change password
