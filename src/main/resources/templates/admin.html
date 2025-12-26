@@ -82,7 +82,8 @@
       .users-scroll thead th:nth-child(4) { width: 100px; }
       .users-scroll thead th:nth-child(5) { width: 140px; }
 
-      /* Make form inputs stack vertically on tablets */
+      /* Stack form inputs vertically on tablets 
+         Bootstrap's col-md-* breaks at 768px, but we want earlier stacking at 992px for better tablet UX */
       #createForm .col-md-3,
       #createForm .col-md-1,
       #createForm .col-md-2 {
@@ -134,13 +135,13 @@
         min-height: 44px;
       }
 
-      /* Make action buttons larger and stack */
-      .d-flex.gap-2 {
+      /* Make action buttons larger and stack - increase specificity */
+      .table td .d-flex.gap-2 {
         flex-direction: column;
-        gap: 8px !important;
+        gap: 8px;
       }
 
-      .d-flex.gap-2 .btn {
+      .table td .d-flex.gap-2 .btn {
         width: 100%;
         min-height: 36px;
       }

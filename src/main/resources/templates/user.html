@@ -56,12 +56,12 @@
         min-height: 44px;
       }
 
-      /* Stack buttons on mobile */
-      .d-sm-flex {
-        flex-direction: column;
+      /* Stack buttons on mobile - target the specific button container */
+      .col-12.d-grid.d-sm-flex.justify-content-sm-end {
+        display: grid !important;
       }
 
-      .d-sm-flex .btn {
+      .col-12.d-grid.d-sm-flex.justify-content-sm-end .btn {
         width: 100%;
       }
 
