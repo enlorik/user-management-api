@@ -32,6 +32,6 @@ class HealthCheckTest {
         // Test that /actuator/health returns JSON content
         mockMvc.perform(get("/actuator/health"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType("application/vnd.spring-boot.actuator.v3+json"));
+                .andExpect(jsonPath("$.status").exists());
     }
 }
