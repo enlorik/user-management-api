@@ -32,6 +32,8 @@ public class SecurityConfig {
                 .requestMatchers("/css/**", "/js/**").permitAll()
                 // Swagger/OpenAPI endpoints
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                // Health check endpoint (for Docker HEALTHCHECK)
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 // auth + registration pages
                 .requestMatchers("/login", "/register").permitAll()
                 // forgot / reset password (all methods and subpaths)

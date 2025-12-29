@@ -429,3 +429,290 @@ mvn surefire-report:report
 
 # View report at target/site/surefire-report.html
 ```
+
+## Docker Health Checks
+
+The application includes a Docker `HEALTHCHECK` instruction to monitor the container's health status in production environments. This is essential for container orchestration platforms like Docker Swarm, Kubernetes, and cloud services to automatically detect and handle unhealthy containers.
+
+### How It Works
+
+The Docker image includes a health check that periodically verifies the application is running and responsive:
+
+- **Health Endpoint**: The application exposes `/actuator/health` via Spring Boot Actuator
+- **Check Interval**: Health check runs every 30 seconds
+- **Timeout**: Each health check has a 3-second timeout
+- **Start Period**: 40 seconds grace period for application startup
+- **Retries**: Container is marked unhealthy after 3 consecutive failures
+
+### Health Check Configuration
+
+The `HEALTHCHECK` instruction in the Dockerfile:
+
+```dockerfile
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
+```
+
+**Parameters:**
+- `--interval=30s`: Time between running checks (after start period)
+- `--timeout=3s`: Maximum time allowed for a single check
+- `--start-period=40s`: Grace period before first health check
+- `--retries=3`: Consecutive failures needed to mark container as unhealthy
+
+### Health Endpoint Details
+
+The `/actuator/health` endpoint returns:
+
+**When Healthy (HTTP 200):**
+```json
+{
+  "status": "UP"
+}
+```
+
+**When Unhealthy (HTTP 503):**
+```json
+{
+  "status": "DOWN",
+  "components": {
+    "db": {
+      "status": "DOWN",
+      "details": { ... }
+    }
+  }
+}
+```
+
+**Detailed Health Information:**
+- Authenticated users (admins) can see detailed component status
+- Public access shows only the overall status
+- Components checked: database connectivity, disk space
+
+### Verifying Health Check Status
+
+#### Check Health Status Manually
+
+When the application is running:
+```bash
+# Direct health check
+curl http://localhost:8080/actuator/health
+
+# Expected response
+{"status":"UP"}
+```
+
+#### Check Docker Container Health
+
+After running the container:
+```bash
+# View container health status
+docker ps
+
+# Detailed health check logs
+docker inspect --format='{{json .State.Health}}' <container-id> | jq
+
+# View last 5 health check results
+docker inspect --format='{{range .State.Health.Log}}{{.Output}}{{end}}' <container-id>
+```
+
+**Container Health States:**
+- `starting`: Container is starting, within start-period grace time
+- `healthy`: Health checks are passing
+- `unhealthy`: Health checks have failed (after retries)
+
+### Testing the HEALTHCHECK
+
+#### Local Testing with Docker
+
+1. **Build the Docker image:**
+   ```bash
+   docker build -t user-management-api .
+   ```
+
+2. **Run the container with health checks:**
+   ```bash
+   docker run -d \
+     --name user-mgmt-test \
+     -p 8080:8080 \
+     -e PGHOST=your-db-host \
+     -e PGPORT=5432 \
+     -e PGDATABASE=userdb \
+     -e PGUSER=dbuser \
+     -e PGPASSWORD=dbpass \
+     -e RESEND_API_KEY=your-api-key \
+     -e RESEND_FROM="User Management <onboarding@resend.dev>" \
+     user-management-api
+   ```
+
+3. **Monitor health status:**
+   ```bash
+   # Watch health status change from 'starting' to 'healthy'
+   watch -n 2 'docker ps --filter name=user-mgmt-test'
+   
+   # View detailed health check logs
+   docker inspect user-mgmt-test --format='{{json .State.Health}}' | jq
+   ```
+
+4. **Simulate unhealthy state:**
+   ```bash
+   # Stop the database to trigger health check failure
+   # Wait for ~90 seconds (3 retries × 30s interval)
+   # Container status will change to 'unhealthy'
+   
+   docker ps --filter name=user-mgmt-test
+   ```
+
+### Troubleshooting Common Issues
+
+#### Health Check Failing Immediately
+
+**Symptom:** Container shows as `unhealthy` shortly after starting
+
+**Possible Causes:**
+1. **Database Connection Failed**
+   - Verify database environment variables are correct
+   - Check database is accessible from container network
+   - Review logs: `docker logs <container-id>`
+
+2. **Application Startup Taking Too Long**
+   - Increase `--start-period` if application needs more time
+   - Default is 40 seconds, may need 60s+ for slow systems
+
+3. **Port Not Accessible**
+   - Verify application is listening on port 8080
+   - Check no firewall blocking internal container access
+
+**Solution:**
+```bash
+# Check application logs
+docker logs user-mgmt-test
+
+# Check health endpoint directly
+docker exec user-mgmt-test curl -f http://localhost:8080/actuator/health
+
+# Verify curl is installed in container
+docker exec user-mgmt-test which curl
+```
+
+#### Health Check Never Becomes Healthy
+
+**Symptom:** Container stuck in `starting` state
+
+**Possible Causes:**
+1. **Application Not Starting**
+   - Check logs for startup errors
+   - Verify all environment variables are set correctly
+
+2. **Health Endpoint Not Accessible**
+   - Verify Spring Boot Actuator is enabled
+   - Check security configuration allows `/actuator/health`
+
+**Solution:**
+```bash
+# View detailed application logs
+docker logs -f user-mgmt-test
+
+# Check if application port is listening
+docker exec user-mgmt-test netstat -tlnp | grep 8080
+
+# Test health endpoint manually inside container
+docker exec user-mgmt-test curl -v http://localhost:8080/actuator/health
+```
+
+#### curl Command Not Found
+
+**Symptom:** Health check fails with "curl: not found"
+
+**Possible Causes:**
+- curl not installed in the container image
+
+**Solution:**
+This should not occur as the Dockerfile includes:
+```dockerfile
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+```
+
+If it does occur, rebuild the image:
+```bash
+docker build --no-cache -t user-management-api .
+```
+
+#### Health Check Performance Impact
+
+**Symptom:** Frequent health checks causing performance issues
+
+**Solution:**
+Adjust health check intervals in the Dockerfile:
+```dockerfile
+HEALTHCHECK --interval=60s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
+```
+
+### Integration with Container Orchestration
+
+#### Docker Compose
+
+```yaml
+services:
+  app:
+    build: .
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+```
+
+#### Kubernetes
+
+Use liveness and readiness probes:
+```yaml
+livenessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 40
+  periodSeconds: 30
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /actuator/health
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 3
+```
+
+### Best Practices
+
+1. **Adjust Parameters for Your Environment**
+   - Increase `start-period` for slower systems or complex deployments
+   - Reduce `interval` for faster failure detection in critical systems
+   - Tune `retries` based on acceptable downtime tolerance
+
+2. **Monitor Health Check Logs**
+   - Regularly review health check results in production
+   - Set up alerts for containers becoming unhealthy
+   - Use `docker events` to track health status changes
+
+3. **Consider Database Health**
+   - The health check includes database connectivity
+   - Ensure database is highly available in production
+   - Consider read replicas for health checks
+
+4. **Test Before Deploying**
+   - Always test health checks in staging environment
+   - Simulate failure scenarios (database down, high load)
+   - Verify recovery behavior after failures
+
+5. **Use with Restart Policies**
+   ```bash
+   docker run -d --restart=unless-stopped \
+     --name user-mgmt \
+     -p 8080:8080 \
+     user-management-api
+   ```
+   Note: Docker does not automatically restart unhealthy containers. Use orchestration tools like Docker Swarm or Kubernetes for automatic restarts based on health status.
