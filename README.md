@@ -214,17 +214,29 @@ The application requires the following environment variables when running with P
 - `PGUSER`: Database username
 - `PGPASSWORD`: Database password
 
-#### Email Service - Resend (Recommended)
+#### Email Service - Resend API (Recommended for Production)
+
+**Why Resend?** The application uses [Resend](https://resend.com) for email delivery in production to avoid SMTP firewall issues commonly encountered on cloud platforms like Railway.
+
 - `RESEND_API_KEY`: Your Resend API key (get one at [resend.com](https://resend.com))
 - `RESEND_FROM`: Email sender address (e.g., `"User Management <onboarding@resend.dev>"`)
 
-#### Email Service - Spring Mail (Alternative)
-If not using Resend, configure Spring Mail:
+**Benefits:**
+- ✅ No firewall blocking (uses HTTPS instead of SMTP ports)
+- ✅ Better deliverability and reliability
+- ✅ Easy to configure (just 2 environment variables)
+- ✅ Free tier includes 3,000 emails/month
+
+#### Email Service - Spring Mail SMTP (Alternative for Local Development)
+
+If you prefer SMTP (not recommended for production):
 - `SPRING_MAIL_HOST`: SMTP server host (e.g., `smtp.gmail.com`)
 - `SPRING_MAIL_PORT`: SMTP server port (e.g., `587`)
 - `SPRING_MAIL_USERNAME`: SMTP username
 - `SPRING_MAIL_PASSWORD`: SMTP password
 - `SPRING_MAIL_FROM`: Default sender email address
+
+⚠️ **Warning**: SMTP ports (25, 465, 587) are often blocked by cloud provider firewalls (Railway, AWS, etc.). Use Resend API for production deployments.
 
 **Note**: For local development with the `local` profile, these variables are pre-configured with dummy values in `application-local.properties`.
 
@@ -716,3 +728,303 @@ readinessProbe:
      user-management-api
    ```
    Note: Docker does not automatically restart unhealthy containers. Use orchestration tools like Docker Swarm or Kubernetes for automatic restarts based on health status.
+
+## Railway Deployment
+
+This application is deployed on [Railway](https://railway.app/) and is accessible at:
+[https://user-management-api-java.up.railway.app/](https://user-management-api-java.up.railway.app/)
+
+Railway provides a streamlined deployment experience with built-in PostgreSQL support and automatic deployments from GitHub.
+
+### Prerequisites
+
+- Railway account ([sign up here](https://railway.app/))
+- Resend API account for email functionality ([get API key](https://resend.com))
+- GitHub repository connected to Railway
+
+### Railway Setup Guide
+
+#### 1. Create a New Railway Project
+
+1. Log into Railway and click **"New Project"**
+2. Select **"Deploy from GitHub repo"**
+3. Choose your `user-management-api` repository
+4. Railway will automatically detect the Dockerfile and begin deployment
+
+#### 2. Add PostgreSQL Database
+
+1. In your Railway project, click **"New"** → **"Database"** → **"Add PostgreSQL"**
+2. Railway automatically creates and links the database
+3. The following environment variables are automatically set:
+   - `PGHOST`
+   - `PGPORT`
+   - `PGDATABASE`
+   - `PGUSER`
+   - `PGPASSWORD`
+
+#### 3. Configure Email Service (Resend API)
+
+The application uses [Resend](https://resend.com) for reliable email delivery in production. Configure the following environment variables in Railway:
+
+1. Go to your service settings in Railway
+2. Click on **"Variables"** tab
+3. Add the following environment variables:
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `RESEND_API_KEY` | Your Resend API key | Get from [resend.com/api-keys](https://resend.com/api-keys) |
+| `RESEND_FROM` | `"Your App <onboarding@resend.dev>"` | Sender email address (must be verified in Resend) |
+
+**Why Resend?**
+- **No SMTP firewall issues**: Uses HTTPS API instead of SMTP ports (which are often blocked)
+- **Better deliverability**: Professional email infrastructure
+- **Easy setup**: Just API key and sender address needed
+- **Free tier**: 3,000 emails/month on free plan
+
+**Getting Started with Resend:**
+1. Sign up at [resend.com](https://resend.com)
+2. Verify your domain (or use `onboarding@resend.dev` for testing)
+3. Create an API key in the dashboard
+4. Add the API key to Railway environment variables
+
+#### 4. Optional: SMTP Configuration (Not Recommended)
+
+If you prefer SMTP over Resend API, configure these variables instead:
+
+| Variable | Example Value | Description |
+|----------|---------------|-------------|
+| `SPRING_MAIL_HOST` | `smtp.gmail.com` | SMTP server hostname |
+| `SPRING_MAIL_PORT` | `587` | SMTP port (usually 587 or 465) |
+| `SPRING_MAIL_USERNAME` | `your-email@gmail.com` | SMTP username |
+| `SPRING_MAIL_PASSWORD` | `your-app-password` | SMTP password or app password |
+| `SPRING_MAIL_FROM` | `your-email@gmail.com` | Default sender address |
+
+⚠️ **Warning**: SMTP may be blocked by Railway firewall rules. Use Resend API for production.
+
+#### 5. Verify Deployment
+
+After deployment:
+
+1. **Check Application Health**:
+   ```bash
+   curl https://your-app.up.railway.app/actuator/health
+   ```
+   Expected response: `{"status":"UP"}`
+
+2. **Test Registration Flow**:
+   - Navigate to `/register`
+   - Create a test account
+   - Check that verification email is received
+
+3. **Monitor Logs**:
+   - Go to Railway dashboard → Your service → **"Deployments"** tab
+   - Click on the latest deployment to view logs
+   - Look for `[MAIL] Email sent via Resend` messages
+
+### Railway Environment Variables Summary
+
+**Required for Production:**
+```bash
+# Database (automatically set by Railway PostgreSQL)
+PGHOST=<railway-postgres-host>
+PGPORT=5432
+PGDATABASE=railway
+PGUSER=postgres
+PGPASSWORD=<generated-password>
+
+# Email via Resend API (required)
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxx
+RESEND_FROM="User Management <onboarding@resend.dev>"
+```
+
+**Optional (for SMTP fallback):**
+```bash
+SPRING_MAIL_HOST=smtp.example.com
+SPRING_MAIL_PORT=587
+SPRING_MAIL_USERNAME=user@example.com
+SPRING_MAIL_PASSWORD=password
+SPRING_MAIL_FROM=user@example.com
+```
+
+### Troubleshooting Railway Deployment
+
+#### Application Not Starting
+
+**Symptom:** Deployment fails or application crashes on startup
+
+**Common Causes:**
+1. **Missing Environment Variables**
+   - Verify all required variables are set in Railway dashboard
+   - Check logs for messages like `Property 'RESEND_API_KEY' not found`
+
+2. **Database Connection Issues**
+   - Ensure PostgreSQL service is running in Railway project
+   - Verify database variables are correctly set
+   - Check that database and app are in the same Railway project
+
+**Solution:**
+```bash
+# View deployment logs in Railway dashboard
+# Look for error messages during startup
+# Common errors:
+# - "Unable to connect to database"
+# - "Property '...' not found"
+# - "Failed to bind to port"
+```
+
+#### Email Not Sending
+
+**Symptom:** Registration completes but no verification email received
+
+**Common Causes:**
+1. **Invalid Resend API Key**
+   - Verify API key is correct and active
+   - Check Resend dashboard for API errors
+
+2. **Sender Email Not Verified**
+   - Resend requires domain verification for production
+   - Use `onboarding@resend.dev` for testing (no verification needed)
+
+3. **SMTP Firewall Blocking** (if using SMTP)
+   - Railway may block outbound SMTP connections
+   - Switch to Resend API to avoid firewall issues
+
+**Solution:**
+```bash
+# Check application logs for email errors
+# Look for these log messages:
+# - "[MAIL] Sending email via Resend to..."
+# - "[MAIL] Email sent via Resend, response: ..."
+# - "[MAIL] Resend error: HTTP 401..." (invalid API key)
+
+# Test Resend API key manually:
+curl -X POST https://api.resend.com/emails \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "from": "onboarding@resend.dev",
+    "to": "test@example.com",
+    "subject": "Test",
+    "text": "Testing Resend API"
+  }'
+```
+
+#### Health Check Failing
+
+**Symptom:** Docker reports container as unhealthy
+
+**Common Causes:**
+1. **Slow Application Startup**
+   - Railway deployments may take 60+ seconds to start
+   - Current HEALTHCHECK has 60s start-period grace time
+
+2. **Database Not Ready**
+   - Application starts before database is fully available
+   - Health check includes database connectivity
+
+**Solution:**
+```bash
+# The Dockerfile is configured with Railway-optimized health check:
+# --start-period=60s: Extended grace period for Railway's startup times
+# --timeout=5s: Longer timeout for slower network
+# --retries=3: More tolerance for transient failures
+
+# If issues persist, you can adjust HEALTHCHECK in Dockerfile:
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
+```
+
+#### SMTP Connection Timeout
+
+**Symptom:** Application hangs or times out during email sending (if using SMTP)
+
+**Cause:** Railway firewall blocks outbound SMTP connections
+
+**Solution:**
+Switch to Resend API (recommended):
+1. Remove SMTP environment variables from Railway
+2. Add `RESEND_API_KEY` and `RESEND_FROM` variables
+3. Redeploy the application
+4. The application automatically uses Resend API for emails
+
+The Resend API:
+- Uses HTTPS (port 443) which is never blocked
+- More reliable than SMTP
+- Better deliverability rates
+- Easier to configure and monitor
+
+### Railway Best Practices
+
+1. **Use Resend API for Email**
+   - Avoids SMTP firewall issues
+   - Better reliability and deliverability
+   - Easier to debug and monitor
+
+2. **Enable Health Checks**
+   - The Dockerfile includes optimized health checks for Railway
+   - Monitor health status in Railway dashboard
+   - Health checks help detect issues early
+
+3. **Monitor Application Logs**
+   - Regularly check deployment logs in Railway
+   - Look for email sending confirmations
+   - Watch for database connection issues
+
+4. **Use Environment-Specific Settings**
+   - Different configs for development (local) vs production (Railway)
+   - Never commit secrets to repository
+   - Use Railway's environment variables for all sensitive data
+
+5. **Test Before Deploying**
+   - Test locally with Docker before pushing to Railway
+   - Verify email functionality with real Resend API key
+   - Ensure all environment variables are documented
+
+### Deployment Workflow
+
+1. **Local Development**:
+   ```bash
+   # Use local profile with H2 database
+   mvn spring-boot:run -Dspring-boot.run.profiles=local
+   ```
+
+2. **Test with Docker Locally**:
+   ```bash
+   # Build and test Docker image
+   docker build -t user-management-api .
+   docker run -d -p 8080:8080 \
+     -e PGHOST=localhost -e PGPORT=5432 \
+     -e PGDATABASE=userdb -e PGUSER=dbuser -e PGPASSWORD=dbpass \
+     -e RESEND_API_KEY=your-key -e RESEND_FROM="Test <test@resend.dev>" \
+     user-management-api
+   
+   # Check health
+   curl http://localhost:8080/actuator/health
+   ```
+
+3. **Deploy to Railway**:
+   ```bash
+   # Push changes to GitHub
+   git add .
+   git commit -m "Update configuration"
+   git push origin main
+   
+   # Railway automatically deploys from GitHub
+   # Monitor deployment in Railway dashboard
+   ```
+
+4. **Verify Production**:
+   ```bash
+   # Check health endpoint
+   curl https://your-app.up.railway.app/actuator/health
+   
+   # Test registration
+   # Open browser: https://your-app.up.railway.app/register
+   ```
+
+### Additional Resources
+
+- [Railway Documentation](https://docs.railway.app/)
+- [Resend Documentation](https://resend.com/docs)
+- [Spring Boot Actuator Guide](https://docs.spring.io/spring-boot/docs/current/reference/html/actuator.html)
+- [Docker Health Check Reference](https://docs.docker.com/engine/reference/builder/#healthcheck)
