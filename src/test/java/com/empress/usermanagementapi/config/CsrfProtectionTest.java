@@ -1,6 +1,5 @@
 package com.empress.usermanagementapi.config;
 
-import com.empress.usermanagementapi.repository.UserRepository;
 import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.EmailVerificationService;
 import com.empress.usermanagementapi.service.PasswordResetService;
@@ -46,9 +45,6 @@ public class CsrfProtectionTest {
 
     @MockBean
     private PasswordResetService passwordResetService;
-
-    @MockBean
-    private UserRepository userRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
