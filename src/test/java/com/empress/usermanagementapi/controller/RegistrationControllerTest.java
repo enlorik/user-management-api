@@ -41,7 +41,7 @@ class RegistrationControllerTest {
                         .with(csrf())
                         .param("username", "validuser123")
                         .param("email", "valid@example.com")
-                        .param("password", "securepassword"))
+                        .param("password", "SecurePass123!"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/login?verifyEmail"));
     }
@@ -52,7 +52,7 @@ class RegistrationControllerTest {
                         .with(csrf())
                         .param("username", "")
                         .param("email", "valid@example.com")
-                        .param("password", "securepassword"))
+                        .param("password", "SecurePass123!"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("register"))
                 .andExpect(model().attributeHasFieldErrors("userForm", "username"));
@@ -64,7 +64,7 @@ class RegistrationControllerTest {
                         .with(csrf())
                         .param("username", "invalid-user!")
                         .param("email", "valid@example.com")
-                        .param("password", "securepassword"))
+                        .param("password", "SecurePass123!"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("register"))
                 .andExpect(model().attributeHasFieldErrors("userForm", "username"));
@@ -76,7 +76,7 @@ class RegistrationControllerTest {
                         .with(csrf())
                         .param("username", "validuser")
                         .param("email", "")
-                        .param("password", "securepassword"))
+                        .param("password", "SecurePass123!"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("register"))
                 .andExpect(model().attributeHasFieldErrors("userForm", "email"));
@@ -88,7 +88,7 @@ class RegistrationControllerTest {
                         .with(csrf())
                         .param("username", "validuser")
                         .param("email", "invalidemail")
-                        .param("password", "securepassword"))
+                        .param("password", "SecurePass123!"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("register"))
                 .andExpect(model().attributeHasFieldErrors("userForm", "email"));
@@ -149,5 +149,105 @@ class RegistrationControllerTest {
                 .andExpect(model().attributeHasFieldErrors("userForm", "email"))
                 .andExpect(model().attributeHasFieldErrors("userForm", "password"))
                 .andExpect(model().attributeExists("validationErrors"));
+    }
+
+    // New tests for enhanced password validation
+
+    @Test
+    void testRegisterWithPasswordWithoutUppercase() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "valid@example.com")
+                        .param("password", "lowercase123!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
+    }
+
+    @Test
+    void testRegisterWithPasswordWithoutLowercase() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "valid@example.com")
+                        .param("password", "UPPERCASE123!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
+    }
+
+    @Test
+    void testRegisterWithPasswordWithoutNumber() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "valid@example.com")
+                        .param("password", "PasswordOnly!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
+    }
+
+    @Test
+    void testRegisterWithPasswordWithoutSpecialCharacter() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "valid@example.com")
+                        .param("password", "Password123"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
+    }
+
+    @Test
+    void testRegisterWithPasswordTooShort() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "valid@example.com")
+                        .param("password", "Sec1!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "password"));
+    }
+
+    // New tests for enhanced email validation
+
+    @Test
+    void testRegisterWithEmailWithoutTLD() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "user@domain")
+                        .param("password", "SecurePass123!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "email"));
+    }
+
+    @Test
+    void testRegisterWithEmailWithoutAtSymbol() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "userdomain.com")
+                        .param("password", "SecurePass123!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "email"));
+    }
+
+    @Test
+    void testRegisterWithEmailWithSpaces() throws Exception {
+        mockMvc.perform(post("/register")
+                        .with(csrf())
+                        .param("username", "validuser")
+                        .param("email", "user name@domain.com")
+                        .param("password", "SecurePass123!"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("register"))
+                .andExpect(model().attributeHasFieldErrors("userForm", "email"));
     }
 }

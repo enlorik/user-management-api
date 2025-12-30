@@ -1,7 +1,7 @@
 package com.empress.usermanagementapi.dto;
 
 import com.empress.usermanagementapi.entity.Role;
-import jakarta.validation.constraints.Email;
+import com.empress.usermanagementapi.validation.ValidationPatterns;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -23,11 +23,14 @@ public class CreateUserRequest {
     private String username;
 
     @NotEmpty(message = "Email is required")
-    @Email(message = "Email must be a valid email address")
+    @Pattern(regexp = ValidationPatterns.EMAIL_PATTERN, 
+             message = ValidationPatterns.EMAIL_MESSAGE)
     private String email;
 
     @NotEmpty(message = "Password is required")
-    @Size(min = 6, max = 255, message = "Password must be between 6 and 255 characters")
+    @Size(min = 8, max = 255, message = "Password must be between 8 and 255 characters")
+    @Pattern(regexp = ValidationPatterns.PASSWORD_PATTERN,
+             message = ValidationPatterns.PASSWORD_MESSAGE)
     private String password;
 
     private Role role;
