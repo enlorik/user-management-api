@@ -1,9 +1,10 @@
 package com.empress.usermanagementapi.controller;
 
 import com.empress.usermanagementapi.dto.CreateUserRequest;
+import com.empress.usermanagementapi.dto.UserResponse;
 import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
-import com.empress.usermanagementapi.repository.UserRepository;
+import com.empress.usermanagementapi.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * REST controller for managing user resources.
@@ -28,19 +30,22 @@ import java.util.Optional;
 @RequestMapping("/users")
 public class UserController {
 
-    private final UserRepository userRepo;
+    private final UserService userService;
     private final PasswordEncoder passwordEncoder;
 
-    public UserController(UserRepository userRepo,
+    public UserController(UserService userService,
                           PasswordEncoder passwordEncoder) {
-        this.userRepo = userRepo;
+        this.userService = userService;
         this.passwordEncoder = passwordEncoder;
     }
 
     // return all users sorted by id (ascending)
     @GetMapping
-    public List<User> getAllUsers() {
-        return userRepo.findAll(Sort.by(Sort.Direction.ASC, "id"));
+    public List<UserResponse> getAllUsers() {
+        return userService.findAll(Sort.by(Sort.Direction.ASC, "id"))
+                .stream()
+                .map(UserResponse::fromEntity)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -60,13 +65,13 @@ public class UserController {
     @PostMapping
     public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
         // duplicate-username guard
-        if (userRepo.existsByUsername(request.getUsername())) {
+        if (userService.usernameExists(request.getUsername())) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this username already exists"));
         }
         // duplicate-email guard
-        if (userRepo.existsByEmail(request.getEmail())) {
+        if (userService.emailExists(request.getEmail())) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this email already exists"));
@@ -76,19 +81,20 @@ public class UserController {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPassword(request.getPassword());
         user.setRole(request.getRole() != null ? request.getRole() : Role.USER);
         
-        User saved = userRepo.save(user);
+        User saved = userService.create(user);
+        UserResponse response = UserResponse.fromEntity(saved);
         return ResponseEntity
                 .created(URI.create("/users/" + saved.getId()))
-                .body(saved);
+                .body(response);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id,
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id,
                                            @RequestBody User user) {
-        Optional<User> opt = userRepo.findById(id);
+        Optional<User> opt = userService.findById(id);
         if (opt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -100,15 +106,16 @@ public class UserController {
             existing.setPassword(passwordEncoder.encode(user.getPassword()));
         }
         existing.setRole(user.getRole());
-        return ResponseEntity.ok(userRepo.save(existing));
+        User updated = userService.update(existing);
+        return ResponseEntity.ok(UserResponse.fromEntity(updated));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        if (!userRepo.existsById(id)) {
+        if (!userService.existsById(id)) {
             return ResponseEntity.notFound().build();
         }
-        userRepo.deleteById(id);
+        userService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -118,7 +125,7 @@ public class UserController {
             @AuthenticationPrincipal org.springframework.security.core.userdetails.User principal,
             @RequestBody Map<String,String> body
     ) {
-        User me = userRepo.findByUsername(principal.getUsername());
+        User me = userService.findByUsername(principal.getUsername());
         if (me == null) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -138,7 +145,7 @@ public class UserController {
 
             // if user is actually changing to a different email, enforce uniqueness
             if (!newEmail.equalsIgnoreCase(me.getEmail())
-                    && userRepo.existsByEmail(newEmail)) {
+                    && userService.emailExists(newEmail)) {
                 return ResponseEntity
                         .status(HttpStatus.CONFLICT)
                         .body(Map.of("error", "Email is already in use."));
@@ -155,7 +162,7 @@ public class UserController {
             }
         }
 
-        User saved = userRepo.save(me);
-        return ResponseEntity.ok(saved);
+        User saved = userService.update(me);
+        return ResponseEntity.ok(UserResponse.fromEntity(saved));
     }
 }

@@ -151,12 +151,12 @@ public class CsrfProtectionTest {
         mockUser.setUsername("testuser");
         mockUser.setEmail("test@example.com");
 
-        // Mock the repository to return false for duplicates and a saved user
-        org.mockito.Mockito.when(userRepository.existsByUsername(org.mockito.ArgumentMatchers.anyString()))
+        // Mock the service to return false for duplicates and a saved user
+        org.mockito.Mockito.when(userService.usernameExists(org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn(false);
-        org.mockito.Mockito.when(userRepository.existsByEmail(org.mockito.ArgumentMatchers.anyString()))
+        org.mockito.Mockito.when(userService.emailExists(org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn(false);
-        org.mockito.Mockito.when(userRepository.save(org.mockito.ArgumentMatchers.any()))
+        org.mockito.Mockito.when(userService.create(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(mockUser);
 
         // The request should not return 403 (CSRF forbidden)
@@ -186,12 +186,12 @@ public class CsrfProtectionTest {
         mockUser.setUsername("testuser");
         mockUser.setEmail("old@example.com");
 
-        // Mock the repository to return the user and allow save
-        org.mockito.Mockito.when(userRepository.findByUsername(org.mockito.ArgumentMatchers.anyString()))
+        // Mock the service to return the user and allow save
+        org.mockito.Mockito.when(userService.findByUsername(org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn(mockUser);
-        org.mockito.Mockito.when(userRepository.existsByEmail(org.mockito.ArgumentMatchers.anyString()))
+        org.mockito.Mockito.when(userService.emailExists(org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn(false);
-        org.mockito.Mockito.when(userRepository.save(org.mockito.ArgumentMatchers.any()))
+        org.mockito.Mockito.when(userService.update(org.mockito.ArgumentMatchers.any()))
                 .thenReturn(mockUser);
 
         // The request should not return 403 (CSRF forbidden)

@@ -2,7 +2,7 @@ package com.empress.usermanagementapi.controller;
 
 import com.empress.usermanagementapi.entity.PasswordResetToken;
 import com.empress.usermanagementapi.entity.User;
-import com.empress.usermanagementapi.repository.UserRepository;
+import com.empress.usermanagementapi.service.UserService;
 import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.PasswordResetService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,15 +15,15 @@ import java.util.Optional;
 @Controller
 public class ForgotPasswordController {
 
-    private final UserRepository userRepo;
+    private final UserService userService;
     private final EmailService emailService;
     private final PasswordResetService passwordResetService;
 
     @Autowired
-    public ForgotPasswordController(UserRepository userRepo,
+    public ForgotPasswordController(UserService userService,
                                     EmailService emailService,
                                     PasswordResetService passwordResetService) {
-        this.userRepo = userRepo;
+        this.userService = userService;
         this.emailService = emailService;
         this.passwordResetService = passwordResetService;
     }
@@ -50,7 +50,7 @@ public class ForgotPasswordController {
         }
 
         // Check username + email combo
-        Optional<User> opt = userRepo.findByUsernameAndEmail(trimmedUsername, trimmedEmail);
+        Optional<User> opt = userService.findByUsernameAndEmail(trimmedUsername, trimmedEmail);
 
         if (opt.isEmpty()) {
             // This is the part you were missing: explicit feedback
