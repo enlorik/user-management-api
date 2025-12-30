@@ -126,7 +126,7 @@ public class EmailService {
                         "Exception while sending %s email to: %s on attempt %d: %s",
                         emailType, to, attempt, e.getMessage());
                 
-                if (attempt < maxRetryAttempts && isRetriableException(e)) {
+                if (attempt < maxRetryAttempts && isRetryableException(e)) {
                     logger.warn("{}. Will retry.", errorMsg, e);
                     try {
                         Thread.sleep(retryDelayMs * attempt); // Exponential backoff
@@ -181,7 +181,7 @@ public class EmailService {
      * Checks if an exception indicates a retryable condition.
      * Typically network-related exceptions like timeouts or connection errors.
      */
-    private boolean isRetriableException(Exception e) {
+    private boolean isRetryableException(Exception e) {
         String message = e.getMessage();
         if (message == null) {
             return false;

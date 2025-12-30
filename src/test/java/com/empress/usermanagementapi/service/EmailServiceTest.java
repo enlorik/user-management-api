@@ -194,7 +194,7 @@ class EmailServiceTest {
     }
 
     @Test
-    void testSendEmail_NonRetriableException_FailsImmediately() throws Exception {
+    void testSendEmail_NonRetryableException_FailsImmediately() throws Exception {
         // Arrange - IOException is not retryable (unless message indicates timeout/connection)
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new IOException("Invalid JSON"));
