@@ -1,7 +1,6 @@
 package com.empress.usermanagementapi.model;
 
 import com.empress.usermanagementapi.validation.ValidationPatterns;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
