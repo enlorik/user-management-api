@@ -10,7 +10,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
@@ -31,12 +30,9 @@ import java.util.stream.Collectors;
 public class UserController {
 
     private final UserService userService;
-    private final PasswordEncoder passwordEncoder;
 
-    public UserController(UserService userService,
-                          PasswordEncoder passwordEncoder) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.passwordEncoder = passwordEncoder;
     }
 
     // return all users sorted by id (ascending)
@@ -102,11 +98,9 @@ public class UserController {
         User existing = opt.get();
         existing.setUsername(user.getUsername());
         existing.setEmail(user.getEmail());
-        if (user.getPassword() != null && !user.getPassword().isEmpty()) {
-            existing.setPassword(passwordEncoder.encode(user.getPassword()));
-        }
         existing.setRole(user.getRole());
-        User updated = userService.update(existing);
+        
+        User updated = userService.updateWithPassword(existing, user.getPassword());
         return ResponseEntity.ok(UserResponse.fromEntity(updated));
     }
 
@@ -157,9 +151,8 @@ public class UserController {
         // handle password change
         if (body.containsKey("password")) {
             String rawPassword = body.get("password");
-            if (rawPassword != null && !rawPassword.isEmpty()) {
-                me.setPassword(passwordEncoder.encode(rawPassword));
-            }
+            User saved = userService.updateWithPassword(me, rawPassword);
+            return ResponseEntity.ok(UserResponse.fromEntity(saved));
         }
 
         User saved = userService.update(me);

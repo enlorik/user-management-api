@@ -88,6 +88,17 @@ public class UserService {
         return userRepo.save(user);
     }
 
+    /**
+     * Update user with password encoding if password is provided.
+     * This method should be used when updating a user with a raw (unencoded) password.
+     */
+    public User updateWithPassword(User user, String rawPassword) {
+        if (rawPassword != null && !rawPassword.isEmpty()) {
+            user.setPassword(passwordEncoder.encode(rawPassword));
+        }
+        return userRepo.save(user);
+    }
+
     public void deleteById(Long id) {
         userRepo.deleteById(id);
     }
