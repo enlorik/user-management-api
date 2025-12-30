@@ -48,6 +48,25 @@
     .links { text-align: center; margin-top: 16px; }
     .links a { color: #4a90e2; text-decoration: none; font-size: 14px; }
     .links a:hover { text-decoration: underline; }
+    /* Validation styles for live feedback */
+    input.valid {
+      border: 2px solid #4caf50;
+      background-color: #f1f8f4;
+    }
+    input.invalid {
+      border: 2px solid #f44336;
+      background-color: #fef1f1;
+    }
+    .error-message {
+      color: #b71c1c;
+      font-size: 12px;
+      margin-top: 4px;
+      display: none;
+      min-height: 18px;
+    }
+    .error-message.show {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -67,6 +86,7 @@
           placeholder="Enter a username"
           required
           autofocus />
+        <div class="error-message" id="username-error"></div>
         <div th:if="${usernameError}"
              class="alert-danger"
              th:text="${usernameError}">
@@ -82,6 +102,7 @@
           th:field="*{email}"
           placeholder="Enter your email"
           required />
+        <div class="error-message" id="email-error"></div>
         <div th:if="${emailError}"
              class="alert-danger"
              th:text="${emailError}">
@@ -97,6 +118,7 @@
           th:field="*{password}"
           placeholder="Choose a password"
           required />
+        <div class="error-message" id="password-error"></div>
       </div>
 
       <button type="submit" class="btn">Create Account</button>
@@ -106,5 +128,150 @@
       <a th:href="@{/login}">← Back to Sign In</a>
     </div>
   </div>
+
+  <script>
+    /**
+     * Live Validation for Registration Form
+     * 
+     * This script provides real-time validation feedback for the registration form.
+     * All validation rules mirror the backend validation patterns defined in:
+     * - RegistrationRequest.java
+     * - ValidationPatterns.java
+     * 
+     * Validation is triggered on:
+     * - 'input' event: When user types (immediate feedback)
+     * - 'blur' event: When user leaves the field
+     */
+
+    // Validation patterns matching backend (ValidationPatterns.java)
+    const validationRules = {
+      username: {
+        // Backend: @Size(min = 3, max = 50) and @Pattern(regexp = "^[a-zA-Z0-9]+$")
+        pattern: /^[a-zA-Z0-9]{3,50}$/,
+        tests: [
+          {
+            condition: (value) => value.length >= 3 && value.length <= 50,
+            message: 'Username must be between 3 and 50 characters'
+          },
+          {
+            condition: (value) => /^[a-zA-Z0-9]+$/.test(value),
+            message: 'Username must contain only letters and numbers'
+          }
+        ]
+      },
+      email: {
+        // Backend: ValidationPatterns.EMAIL_PATTERN
+        // Pattern: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
+        pattern: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        tests: [
+          {
+            condition: (value) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value),
+            message: 'Email must be a valid email address'
+          }
+        ]
+      },
+      password: {
+        // Backend: ValidationPatterns.PASSWORD_PATTERN
+        // Pattern: ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=\[\]{};':\"\\|,.<>/~`]).{8,}$
+        // Requirements:
+        // - At least 8 characters (@Size(min = 8))
+        // - At least one lowercase letter
+        // - At least one uppercase letter
+        // - At least one digit
+        // - At least one special character
+        pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>/~`]).{8,}$/,
+        tests: [
+          {
+            condition: (value) => value.length >= 8,
+            message: 'Password must be at least 8 characters long'
+          },
+          {
+            condition: (value) => /[a-z]/.test(value),
+            message: 'Password must contain at least one lowercase letter'
+          },
+          {
+            condition: (value) => /[A-Z]/.test(value),
+            message: 'Password must contain at least one uppercase letter'
+          },
+          {
+            condition: (value) => /\d/.test(value),
+            message: 'Password must contain at least one digit'
+          },
+          {
+            condition: (value) => /[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>/~`]/.test(value),
+            message: 'Password must contain at least one special character (!@#$%^&* etc.)'
+          }
+        ]
+      }
+    };
+
+    /**
+     * Validates a field based on its validation rules
+     * @param {string} fieldId - The ID of the input field to validate
+     * @returns {boolean} - True if valid, false otherwise
+     */
+    function validateField(fieldId) {
+      const input = document.getElementById(fieldId);
+      const errorDiv = document.getElementById(fieldId + '-error');
+      const value = input.value.trim();
+      
+      // Get validation rules for this field
+      const rules = validationRules[fieldId];
+      if (!rules) return true;
+
+      // Check if field is empty
+      if (value === '') {
+        input.classList.remove('valid', 'invalid');
+        errorDiv.textContent = '';
+        errorDiv.classList.remove('show');
+        return false;
+      }
+
+      // Run all validation tests for this field
+      for (const test of rules.tests) {
+        if (!test.condition(value)) {
+          // Validation failed - show error
+          input.classList.remove('valid');
+          input.classList.add('invalid');
+          errorDiv.textContent = test.message;
+          errorDiv.classList.add('show');
+          return false;
+        }
+      }
+
+      // All tests passed - show success
+      input.classList.remove('invalid');
+      input.classList.add('valid');
+      errorDiv.textContent = '';
+      errorDiv.classList.remove('show');
+      return true;
+    }
+
+    /**
+     * Attaches validation event listeners to a field
+     * @param {string} fieldId - The ID of the input field
+     */
+    function attachValidation(fieldId) {
+      const input = document.getElementById(fieldId);
+      
+      // Validate on input (as user types)
+      input.addEventListener('input', function() {
+        validateField(fieldId);
+      });
+      
+      // Validate on blur (when user leaves the field)
+      input.addEventListener('blur', function() {
+        validateField(fieldId);
+      });
+    }
+
+    // Initialize validation when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+      // Attach validation to all fields
+      attachValidation('username');
+      attachValidation('email');
+      attachValidation('password');
+    });
+  </script>
 </body>
 </html>
