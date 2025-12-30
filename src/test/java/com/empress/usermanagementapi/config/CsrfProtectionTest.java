@@ -80,7 +80,7 @@ public class CsrfProtectionTest {
         mockMvc.perform(post("/register")
                         .param("username", "newuser")
                         .param("email", "new@example.com")
-                        .param("password", "password123"))
+                        .param("password", "SecurePass123!"))
                 .andExpect(status().isForbidden());
     }
 
@@ -91,7 +91,7 @@ public class CsrfProtectionTest {
                         .with(csrf())
                         .param("username", "newuser")
                         .param("email", "new@example.com")
-                        .param("password", "password123"))
+                        .param("password", "SecurePass123!"))
                 .andExpect(status().is3xxRedirection()); // Will succeed and redirect
     }
 
@@ -142,7 +142,7 @@ public class CsrfProtectionTest {
         // REST API endpoint should work without CSRF token
         // The key test is that we don't get 403 Forbidden due to CSRF
         String userJson = objectMapper.writeValueAsString(
-                new TestUserRequest("testuser", "test@example.com", "password123", "USER")
+                new TestUserRequest("testuser", "test@example.com", "SecurePass123!", "USER")
         );
 
         // Create a mock user to avoid NullPointerException
