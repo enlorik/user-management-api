@@ -1,6 +1,7 @@
 package com.empress.usermanagementapi.dto;
 
 import com.empress.usermanagementapi.entity.Role;
+import com.empress.usermanagementapi.validation.ValidationPatterns;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
@@ -23,14 +24,14 @@ public class CreateUserRequest {
     private String username;
 
     @NotEmpty(message = "Email is required")
-    @Pattern(regexp = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", 
-             message = "Email must be a valid email address")
+    @Pattern(regexp = ValidationPatterns.EMAIL_PATTERN, 
+             message = ValidationPatterns.EMAIL_MESSAGE)
     private String email;
 
     @NotEmpty(message = "Password is required")
     @Size(min = 8, max = 255, message = "Password must be between 8 and 255 characters")
-    @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#^()_+\\-=\\[\\]{};':\"\\\\|,.<>/~`]).{8,}$",
-             message = "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character")
+    @Pattern(regexp = ValidationPatterns.PASSWORD_PATTERN,
+             message = ValidationPatterns.PASSWORD_MESSAGE)
     private String password;
 
     private Role role;
