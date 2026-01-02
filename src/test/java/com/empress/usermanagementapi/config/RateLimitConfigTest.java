@@ -29,31 +29,12 @@ class RateLimitConfigTest {
     }
     
     /**
-     * Test that login buckets enforce the correct rate limit (5 per minute).
+     * Test that login buckets enforce the correct rate limit (10 per minute).
      */
     @Test
     void testLoginBucketRateLimit() {
         String ip = "192.168.1.1";
         Bucket bucket = rateLimitConfig.resolveBucketForLogin(ip);
-        
-        // Should allow 5 requests
-        for (int i = 0; i < 5; i++) {
-            ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
-            assertTrue(probe.isConsumed(), "Request " + (i + 1) + " should be allowed");
-        }
-        
-        // 6th request should be rejected
-        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
-        assertFalse(probe.isConsumed(), "6th request should be rejected");
-    }
-    
-    /**
-     * Test that register buckets enforce the correct rate limit (10 per 15 minutes).
-     */
-    @Test
-    void testRegisterBucketRateLimit() {
-        String ip = "192.168.1.2";
-        Bucket bucket = rateLimitConfig.resolveBucketForRegister(ip);
         
         // Should allow 10 requests
         for (int i = 0; i < 10; i++) {
@@ -67,12 +48,12 @@ class RateLimitConfigTest {
     }
     
     /**
-     * Test that verify-email buckets enforce the correct rate limit (20 per minute).
+     * Test that register buckets enforce the correct rate limit (20 per 10 minutes).
      */
     @Test
-    void testVerifyEmailBucketRateLimit() {
-        String ip = "192.168.1.3";
-        Bucket bucket = rateLimitConfig.resolveBucketForVerifyEmail(ip);
+    void testRegisterBucketRateLimit() {
+        String ip = "192.168.1.2";
+        Bucket bucket = rateLimitConfig.resolveBucketForRegister(ip);
         
         // Should allow 20 requests
         for (int i = 0; i < 20; i++) {
@@ -83,6 +64,25 @@ class RateLimitConfigTest {
         // 21st request should be rejected
         ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
         assertFalse(probe.isConsumed(), "21st request should be rejected");
+    }
+    
+    /**
+     * Test that verify-email buckets enforce the correct rate limit (30 per minute).
+     */
+    @Test
+    void testVerifyEmailBucketRateLimit() {
+        String ip = "192.168.1.3";
+        Bucket bucket = rateLimitConfig.resolveBucketForVerifyEmail(ip);
+        
+        // Should allow 30 requests
+        for (int i = 0; i < 30; i++) {
+            ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+            assertTrue(probe.isConsumed(), "Request " + (i + 1) + " should be allowed");
+        }
+        
+        // 31st request should be rejected
+        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+        assertFalse(probe.isConsumed(), "31st request should be rejected");
     }
     
     /**
@@ -100,7 +100,7 @@ class RateLimitConfigTest {
         assertNotSame(bucket1, bucket2, "Different IPs should have different buckets");
         
         // Consume all tokens from bucket1
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 10; i++) {
             bucket1.tryConsumeAndReturnRemaining(1);
         }
         
