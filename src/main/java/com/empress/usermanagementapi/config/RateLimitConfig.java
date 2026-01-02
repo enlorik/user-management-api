@@ -22,9 +22,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * and provides bucket management with automatic cleanup of expired entries.
  * 
  * Rate limits:
- * - /login: 5 requests per minute
- * - /register: 10 requests per 15 minutes
- * - /verify-email: 20 requests per minute
+ * - /login: 10 requests per minute
+ * - /register: 20 requests per 10 minutes
+ * - /verify-email: 30 requests per minute
  */
 @Component
 @EnableScheduling
@@ -50,7 +50,7 @@ public class RateLimitConfig {
     
     /**
      * Get or create a rate limit bucket for the /login endpoint.
-     * Limit: 5 requests per minute
+     * Limit: 10 requests per minute
      */
     public Bucket resolveBucketForLogin(String ip) {
         loginLastAccess.put(ip, System.currentTimeMillis());
@@ -59,7 +59,7 @@ public class RateLimitConfig {
     
     /**
      * Get or create a rate limit bucket for the /register endpoint.
-     * Limit: 10 requests per 15 minutes
+     * Limit: 20 requests per 10 minutes
      */
     public Bucket resolveBucketForRegister(String ip) {
         registerLastAccess.put(ip, System.currentTimeMillis());
@@ -68,7 +68,7 @@ public class RateLimitConfig {
     
     /**
      * Get or create a rate limit bucket for the /verify-email endpoint.
-     * Limit: 20 requests per minute
+     * Limit: 30 requests per minute
      */
     public Bucket resolveBucketForVerifyEmail(String ip) {
         verifyEmailLastAccess.put(ip, System.currentTimeMillis());
@@ -77,10 +77,10 @@ public class RateLimitConfig {
     
     /**
      * Create a bucket for /login endpoint.
-     * Configuration: 5 tokens, refill 5 tokens per minute
+     * Configuration: 10 tokens, refill 10 tokens per minute
      */
     private Bucket createBucketForLogin() {
-        Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(1)));
+        Bandwidth limit = Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(1)));
         return Bucket.builder()
                 .addLimit(limit)
                 .build();
@@ -88,10 +88,10 @@ public class RateLimitConfig {
     
     /**
      * Create a bucket for /register endpoint.
-     * Configuration: 10 tokens, refill 10 tokens per 15 minutes
+     * Configuration: 20 tokens, refill 20 tokens per 10 minutes
      */
     private Bucket createBucketForRegister() {
-        Bandwidth limit = Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(15)));
+        Bandwidth limit = Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(10)));
         return Bucket.builder()
                 .addLimit(limit)
                 .build();
@@ -99,10 +99,10 @@ public class RateLimitConfig {
     
     /**
      * Create a bucket for /verify-email endpoint.
-     * Configuration: 20 tokens, refill 20 tokens per minute
+     * Configuration: 30 tokens, refill 30 tokens per minute
      */
     private Bucket createBucketForVerifyEmail() {
-        Bandwidth limit = Bandwidth.classic(20, Refill.intervally(20, Duration.ofMinutes(1)));
+        Bandwidth limit = Bandwidth.classic(30, Refill.intervally(30, Duration.ofMinutes(1)));
         return Bucket.builder()
                 .addLimit(limit)
                 .build();

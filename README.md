@@ -97,9 +97,9 @@ This application implements CSRF (Cross-Site Request Forgery) protection to secu
 This application implements IP-based rate limiting on critical public endpoints to protect against brute force attacks and spam. Rate limiting uses the Bucket4j library with a token bucket algorithm.
 
 **Protected Endpoints:**
-- `/login` and `/auth/login`: 5 requests per minute
-- `/register`: 10 requests per 15 minutes
-- `/verify-email`: 20 requests per minute
+- `/login` and `/auth/login`: 10 requests per minute
+- `/register`: 20 requests per 10 minutes
+- `/verify-email`: 30 requests per minute
 
 **How It Works:**
 - Each client IP address gets its own rate limit bucket per endpoint
@@ -125,10 +125,10 @@ Rate limits are defined in `RateLimitConfig.java`. To modify limits:
 
 **Testing Rate Limits:**
 ```bash
-# Test login rate limit (5 requests per minute)
-for i in {1..6}; do curl -X POST http://localhost:8080/login; done
+# Test login rate limit (10 requests per minute)
+for i in {1..11}; do curl -X POST http://localhost:8080/login; done
 
-# The 6th request will return HTTP 429 with Retry-After header
+# The 11th request will return HTTP 429 with Retry-After header
 ```
 
 ## Development Setup
