@@ -53,12 +53,13 @@ class RateLimitFilterTest {
     }
     
     /**
-     * Test that requests within the rate limit are allowed and passed to the filter chain.
+     * Test that POST requests within the rate limit are allowed and passed to the filter chain.
      */
     @Test
     void testLoginWithinRateLimit() throws Exception {
         // Setup
         when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
         when(request.getRemoteAddr()).thenReturn("192.168.1.1");
         
         // Execute: Make 10 requests (the limit for /login is 10 per minute)
@@ -72,12 +73,13 @@ class RateLimitFilterTest {
     }
     
     /**
-     * Test that requests exceeding the rate limit are rejected with HTTP 429.
+     * Test that POST requests exceeding the rate limit are rejected with HTTP 429.
      */
     @Test
     void testLoginExceedsRateLimit() throws Exception {
         // Setup
         when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
         when(request.getRemoteAddr()).thenReturn("192.168.1.2");
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         
@@ -104,6 +106,7 @@ class RateLimitFilterTest {
     void testDifferentIpsHaveSeparateBuckets() throws Exception {
         // Setup
         when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
         
         // Execute: Make 10 requests from IP1
         when(request.getRemoteAddr()).thenReturn("192.168.1.10");
@@ -130,14 +133,16 @@ class RateLimitFilterTest {
         // Setup
         when(request.getRemoteAddr()).thenReturn("192.168.1.30");
         
-        // Execute: Make 10 requests to /login
+        // Execute: Make 10 POST requests to /login
         when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
         for (int i = 0; i < 10; i++) {
             rateLimitFilter.doFilter(request, response, filterChain);
         }
         
-        // Execute: Make 30 requests to /verify-email
+        // Execute: Make 30 GET requests to /verify-email
         when(request.getRequestURI()).thenReturn("/verify-email");
+        when(request.getMethod()).thenReturn("GET");
         for (int i = 0; i < 30; i++) {
             rateLimitFilter.doFilter(request, response, filterChain);
         }
@@ -148,12 +153,13 @@ class RateLimitFilterTest {
     }
     
     /**
-     * Test that /register endpoint has correct rate limit (20 per 10 minutes).
+     * Test that /register endpoint has correct rate limit (20 per 10 minutes) for POST requests.
      */
     @Test
     void testRegisterRateLimit() throws Exception {
         // Setup
         when(request.getRequestURI()).thenReturn("/register");
+        when(request.getMethod()).thenReturn("POST");
         when(request.getRemoteAddr()).thenReturn("192.168.1.40");
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         
@@ -175,12 +181,13 @@ class RateLimitFilterTest {
     }
     
     /**
-     * Test that /verify-email endpoint has correct rate limit (30 per minute).
+     * Test that /verify-email endpoint has correct rate limit (30 per minute) for all methods.
      */
     @Test
     void testVerifyEmailRateLimit() throws Exception {
         // Setup
         when(request.getRequestURI()).thenReturn("/verify-email");
+        when(request.getMethod()).thenReturn("GET");
         when(request.getRemoteAddr()).thenReturn("192.168.1.50");
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         
@@ -208,6 +215,7 @@ class RateLimitFilterTest {
     void testXForwardedForHeaderExtraction() throws Exception {
         // Setup
         when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
         when(request.getHeader("X-Forwarded-For")).thenReturn("10.0.0.1, 10.0.0.2");
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         
@@ -249,6 +257,7 @@ class RateLimitFilterTest {
     void testFilterHandlesIOExceptionWhenWritingResponse() throws Exception {
         // Setup: Create a scenario where response.getWriter() throws an exception
         when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("POST");
         when(request.getRemoteAddr()).thenReturn("192.168.1.70");
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         
@@ -276,10 +285,11 @@ class RateLimitFilterTest {
     void testAuthLoginEndpointRateLimited() throws Exception {
         // Setup
         when(request.getRequestURI()).thenReturn("/auth/login");
+        when(request.getMethod()).thenReturn("POST");
         when(request.getRemoteAddr()).thenReturn("192.168.1.80");
         when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
         
-        // Execute: Make 10 requests
+        // Execute: Make 10 POST requests
         for (int i = 0; i < 10; i++) {
             rateLimitFilter.doFilter(request, response, filterChain);
         }
@@ -289,6 +299,152 @@ class RateLimitFilterTest {
         
         // Execute: 11th request should be rejected
         rateLimitFilter.doFilter(request, response, filterChain);
+        verify(response, times(1)).setStatus(429);
+    }
+    
+    /**
+     * Test that GET requests to /login are NOT rate-limited.
+     * This ensures viewing the login page doesn't consume rate limit tokens.
+     */
+    @Test
+    void testLoginPageGetRequestsNotRateLimited() throws Exception {
+        // Setup
+        when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("GET");
+        
+        // Execute: Make 100 GET requests to /login (well beyond the POST limit of 10)
+        for (int i = 0; i < 100; i++) {
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+        
+        // Verify: All 100 requests should pass through without rate limiting
+        verify(filterChain, times(100)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+    
+    /**
+     * Test that GET requests to /register are NOT rate-limited.
+     * This ensures viewing the registration page doesn't consume rate limit tokens.
+     */
+    @Test
+    void testRegisterPageGetRequestsNotRateLimited() throws Exception {
+        // Setup
+        when(request.getRequestURI()).thenReturn("/register");
+        when(request.getMethod()).thenReturn("GET");
+        
+        // Execute: Make 100 GET requests to /register (well beyond the POST limit of 20)
+        for (int i = 0; i < 100; i++) {
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+        
+        // Verify: All 100 requests should pass through without rate limiting
+        verify(filterChain, times(100)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+    
+    /**
+     * Test that /logout endpoint is NEVER rate-limited.
+     * This ensures users can always logout regardless of rate limits.
+     */
+    @Test
+    void testLogoutEndpointNotRateLimited() throws Exception {
+        // Setup
+        when(request.getRequestURI()).thenReturn("/logout");
+        when(request.getMethod()).thenReturn("POST");
+        
+        // Execute: Make 100 POST requests to /logout
+        for (int i = 0; i < 100; i++) {
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+        
+        // Verify: All 100 requests should pass through without rate limiting
+        verify(filterChain, times(100)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+    
+    /**
+     * Test the complete login-logout cycle to ensure it doesn't trigger rate limiting.
+     * This simulates the bug scenario: user logs in once and logs out.
+     */
+    @Test
+    void testLoginLogoutCycleDoesNotTriggerRateLimit() throws Exception {
+        // Setup
+        when(request.getRemoteAddr()).thenReturn("192.168.1.93");
+        
+        // Step 1: User performs 5 login cycles (login POST + logout POST + view login page GET)
+        for (int i = 0; i < 5; i++) {
+            // POST to /login (should be rate-limited, consumes 1 token)
+            when(request.getRequestURI()).thenReturn("/login");
+            when(request.getMethod()).thenReturn("POST");
+            rateLimitFilter.doFilter(request, response, filterChain);
+            
+            // POST to /logout (should NOT be rate-limited)
+            when(request.getRequestURI()).thenReturn("/logout");
+            when(request.getMethod()).thenReturn("POST");
+            rateLimitFilter.doFilter(request, response, filterChain);
+            
+            // GET to /login after logout redirect (should NOT be rate-limited)
+            when(request.getRequestURI()).thenReturn("/login");
+            when(request.getMethod()).thenReturn("GET");
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+        
+        // Verify: All 15 requests (5 login POST + 5 logout POST + 5 login GET) should pass
+        // Only the 5 POST requests to /login should consume rate limit tokens
+        verify(filterChain, times(15)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+    
+    /**
+     * Test that /login?logout redirect (after logout) doesn't consume rate limit tokens.
+     */
+    @Test
+    void testLoginWithLogoutParameterNotRateLimited() throws Exception {
+        // Setup - simulate the redirect after logout
+        when(request.getRequestURI()).thenReturn("/login");
+        when(request.getMethod()).thenReturn("GET");
+        
+        // Execute: Make 100 GET requests to /login?logout
+        for (int i = 0; i < 100; i++) {
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+        
+        // Verify: All 100 requests should pass through without rate limiting
+        verify(filterChain, times(100)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+    
+    /**
+     * Test mixed GET and POST requests to /login to ensure only POST is rate-limited.
+     */
+    @Test
+    void testMixedGetAndPostRequestsToLogin() throws Exception {
+        // Setup
+        when(request.getRequestURI()).thenReturn("/login");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.95");
+        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+        
+        // Execute: Alternate between GET and POST requests
+        for (int i = 0; i < 10; i++) {
+            // GET request (should not be rate-limited)
+            when(request.getMethod()).thenReturn("GET");
+            rateLimitFilter.doFilter(request, response, filterChain);
+            
+            // POST request (should be rate-limited)
+            when(request.getMethod()).thenReturn("POST");
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+        
+        // Verify: All 20 requests should pass (10 GET + 10 POST within limit)
+        verify(filterChain, times(20)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+        
+        // Execute: One more POST should be rejected (11th POST)
+        when(request.getMethod()).thenReturn("POST");
+        rateLimitFilter.doFilter(request, response, filterChain);
+        
+        // Verify: 21st request (11th POST) should be rejected
+        verify(filterChain, times(20)).doFilter(request, response); // Still 20
         verify(response, times(1)).setStatus(429);
     }
 }

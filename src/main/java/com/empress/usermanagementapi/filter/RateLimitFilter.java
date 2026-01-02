@@ -50,9 +50,10 @@ public class RateLimitFilter implements Filter {
         HttpServletResponse response = (HttpServletResponse) servletResponse;
         
         String path = request.getRequestURI();
+        String method = request.getMethod();
         
         // Only apply rate limiting to specific endpoints
-        if (!shouldRateLimit(path)) {
+        if (!shouldRateLimit(path, method)) {
             chain.doFilter(request, response);
             return;
         }
@@ -106,15 +107,37 @@ public class RateLimitFilter implements Filter {
     }
     
     /**
-     * Determine if the given path should be rate limited.
-     * Uses exact matching for /login and /register,
-     * and prefix matching for /auth/login and /verify-email to handle query parameters.
+     * Determine if the given path and HTTP method should be rate limited.
+     * 
+     * Rate limiting rules:
+     * - /logout: Never rate-limited (users should always be able to logout)
+     * - /login: Only POST requests are rate-limited (GET requests to view the page are not)
+     * - /auth/login: Only POST requests are rate-limited
+     * - /register: Only POST requests are rate-limited (GET requests to view the page are not)
+     * - /verify-email: Rate-limited for all methods (to prevent verification token abuse)
+     * 
+     * This ensures that:
+     * 1. Logout process is never blocked by rate limiting
+     * 2. Viewing login/register pages doesn't consume rate limit tokens
+     * 3. Only actual authentication/registration attempts are rate-limited
      */
-    private boolean shouldRateLimit(String path) {
-        return path.equals("/login") || 
-               path.startsWith("/auth/login") ||
-               path.equals("/register") || 
-               path.startsWith("/verify-email");
+    private boolean shouldRateLimit(String path, String method) {
+        // Explicitly exclude logout path
+        if (path.equals("/logout") || path.startsWith("/logout")) {
+            return false;
+        }
+        
+        // For login and register endpoints, only rate-limit POST requests
+        if (path.equals("/login") || path.startsWith("/auth/login") || path.equals("/register")) {
+            return "POST".equalsIgnoreCase(method);
+        }
+        
+        // For verify-email, rate-limit all methods (typically GET with token parameter)
+        if (path.startsWith("/verify-email")) {
+            return true;
+        }
+        
+        return false;
     }
     
     /**
