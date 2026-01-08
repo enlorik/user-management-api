@@ -6,6 +6,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -31,7 +32,7 @@ public class StaticResourcesTest {
     public void testCssResourcesDoNotRedirect() throws Exception {
         // Verify that accessing a CSS file does NOT result in a 302 redirect
         mockMvc.perform(get("/css/styles.css"))
-                .andExpect(status().is(org.hamcrest.Matchers.not(302)));
+                .andExpect(status().is(not(302)));
     }
 
     @Test
@@ -39,6 +40,6 @@ public class StaticResourcesTest {
         // Test that the JS directory path doesn't redirect to login
         // Note: accessing a non-existent JS file may return 404, but should not redirect
         mockMvc.perform(get("/js/test.js"))
-                .andExpect(status().is(org.hamcrest.Matchers.not(302)));
+                .andExpect(status().is(not(302)));
     }
 }
