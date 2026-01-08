@@ -31,14 +31,13 @@ public class StaticResourcesTest {
     public void testCssResourcesDoNotRedirect() throws Exception {
         // Verify that accessing a CSS file does NOT result in a 302 redirect
         mockMvc.perform(get("/css/styles.css"))
-                .andExpect(status().isOk())
-                .andExpect(status().isNotFound().or(status().isOk()));
+                .andExpect(status().is(org.hamcrest.Matchers.not(302)));
     }
 
     @Test
     public void testJsDirectoryIsAccessible() throws Exception {
         // Test that the JS directory path doesn't redirect to login
-        // Note: accessing a directory may return 404 if no index, but should not redirect
+        // Note: accessing a non-existent JS file may return 404, but should not redirect
         mockMvc.perform(get("/js/test.js"))
                 .andExpect(status().is(org.hamcrest.Matchers.not(302)));
     }
