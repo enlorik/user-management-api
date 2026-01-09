@@ -3,6 +3,8 @@ package com.empress.usermanagementapi.config;
 import com.empress.usermanagementapi.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,33 +22,39 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        logger.info("Configuring security filter chain with static resource access");
+        
         http
             .csrf(csrf -> csrf
                 // Disable CSRF for REST API endpoints (stateless)
                 .ignoringRequestMatchers("/users/**", "/auth/**")
             )
-            .authorizeHttpRequests(authz -> authz
-                // static resources always public
-                .requestMatchers("/css/**", "/js/**").permitAll()
-                // Swagger/OpenAPI endpoints
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                // Health check endpoint (for Docker HEALTHCHECK)
-                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
-                // auth + registration pages
-                .requestMatchers("/login", "/register").permitAll()
-                // forgot / reset password (all methods and subpaths)
-                .requestMatchers("/forgot-password", "/forgot-password/**",
-                                 "/reset-password", "/reset-password/**").permitAll()
-                // email verification link from the email
-                .requestMatchers("/verify-email", "/verify-email/**").permitAll()
-                // dashboards
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
-                // everything else requires auth
-                .anyRequest().authenticated()
-            )
+            .authorizeHttpRequests(authz -> {
+                logger.debug("Configuring authorization rules - static resources (/css/**, /js/**) will be publicly accessible");
+                authz
+                    // static resources always public - must be first to avoid redirects
+                    .requestMatchers("/css/**", "/js/**").permitAll()
+                    // Swagger/OpenAPI endpoints
+                    .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                    // Health check endpoint (for Docker HEALTHCHECK)
+                    .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                    // auth + registration pages
+                    .requestMatchers("/login", "/register").permitAll()
+                    // forgot / reset password (all methods and subpaths)
+                    .requestMatchers("/forgot-password", "/forgot-password/**",
+                                     "/reset-password", "/reset-password/**").permitAll()
+                    // email verification link from the email
+                    .requestMatchers("/verify-email", "/verify-email/**").permitAll()
+                    // dashboards
+                    .requestMatchers("/admin/**").hasRole("ADMIN")
+                    .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
+                    // everything else requires auth
+                    .anyRequest().authenticated();
+            })
             .formLogin(form -> form
                 .loginPage("/login")
                 .successHandler(this::loginSuccessHandler)

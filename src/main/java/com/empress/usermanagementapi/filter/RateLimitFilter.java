@@ -51,6 +51,13 @@ public class RateLimitFilter implements Filter {
         
         String path = request.getRequestURI();
         
+        // Skip static resources to avoid any potential interference
+        if (isStaticResource(path)) {
+            logger.debug("Skipping rate limit for static resource: {}", path);
+            chain.doFilter(request, response);
+            return;
+        }
+        
         // Only apply rate limiting to specific endpoints
         if (!shouldRateLimit(path)) {
             chain.doFilter(request, response);
@@ -103,6 +110,18 @@ public class RateLimitFilter implements Filter {
             logger.error("Error in rate limit filter for path {}: {}", path, e.getMessage(), e);
             chain.doFilter(request, response);
         }
+    }
+    
+    /**
+     * Check if the path is a static resource that should bypass rate limiting.
+     * Static resources include CSS, JS, images, fonts, etc.
+     */
+    private boolean isStaticResource(String path) {
+        return path.startsWith("/css/") || 
+               path.startsWith("/js/") || 
+               path.startsWith("/images/") || 
+               path.startsWith("/fonts/") ||
+               path.startsWith("/static/");
     }
     
     /**
