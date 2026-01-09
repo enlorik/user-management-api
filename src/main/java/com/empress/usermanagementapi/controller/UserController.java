@@ -6,6 +6,8 @@ import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.service.UserService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +31,8 @@ import java.util.stream.Collectors;
 @RequestMapping("/users")
 public class UserController {
 
+    private static final Logger log = LoggerFactory.getLogger(UserController.class);
+
     private final UserService userService;
 
     public UserController(UserService userService) {
@@ -38,10 +42,13 @@ public class UserController {
     // return all users sorted by id (ascending)
     @GetMapping
     public List<UserResponse> getAllUsers() {
-        return userService.findAll(Sort.by(Sort.Direction.ASC, "id"))
+        log.debug("Retrieving all users");
+        List<UserResponse> users = userService.findAll(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
                 .map(UserResponse::fromEntity)
                 .collect(Collectors.toList());
+        log.debug("Retrieved {} users", users.size());
+        return users;
     }
 
     /**
@@ -60,14 +67,18 @@ public class UserController {
      */
     @PostMapping
     public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
+        log.info("Received request to create user - username: {}", request.getUsername());
+        
         // duplicate-username guard
         if (userService.usernameExists(request.getUsername())) {
+            log.warn("User creation failed - username already exists: {}", request.getUsername());
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this username already exists"));
         }
         // duplicate-email guard
         if (userService.emailExists(request.getEmail())) {
+            log.warn("User creation failed - email already exists: {}", request.getEmail());
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this email already exists"));
@@ -82,6 +93,9 @@ public class UserController {
         
         User saved = userService.create(user);
         UserResponse response = UserResponse.fromEntity(saved);
+        
+        log.info("User created successfully - userId: {}, username: {}", saved.getId(), saved.getUsername());
+        
         return ResponseEntity
                 .created(URI.create("/users/" + saved.getId()))
                 .body(response);
@@ -90,8 +104,11 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(@PathVariable Long id,
                                            @RequestBody User user) {
+        log.info("Received request to update user - userId: {}", id);
+        
         Optional<User> opt = userService.findById(id);
         if (opt.isEmpty()) {
+            log.warn("User update failed - user not found: {}", id);
             return ResponseEntity.notFound().build();
         }
 
@@ -101,15 +118,20 @@ public class UserController {
         existing.setRole(user.getRole());
         
         User updated = userService.updateWithPassword(existing, user.getPassword());
+        log.info("User updated successfully - userId: {}", id);
         return ResponseEntity.ok(UserResponse.fromEntity(updated));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        log.info("Received request to delete user - userId: {}", id);
+        
         if (!userService.existsById(id)) {
+            log.warn("User deletion failed - user not found: {}", id);
             return ResponseEntity.notFound().build();
         }
         userService.deleteById(id);
+        log.info("User deleted successfully - userId: {}", id);
         return ResponseEntity.noContent().build();
     }
 

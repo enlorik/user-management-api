@@ -1,5 +1,7 @@
 package com.empress.usermanagementapi.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,6 +14,8 @@ import java.util.Optional;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
@@ -39,11 +43,22 @@ public class UserService {
      * Create a new user (caller is responsible for checking duplicates first).
      */
     public User create(User user) {
+        log.info("Creating new user - username: {}, email: {}, role: {}", 
+                user.getUsername(), 
+                user.getEmail(), 
+                user.getRole() != null ? user.getRole() : Role.USER);
+        
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         if (user.getRole() == null) {
             user.setRole(Role.USER);
         }
-        return userRepo.save(user);
+        User savedUser = userRepo.save(user);
+        
+        log.info("User created successfully - userId: {}, username: {}", 
+                savedUser.getId(), 
+                savedUser.getUsername());
+        
+        return savedUser;
     }
 
     // ← below this line, the original file’s other methods follow, unchanged

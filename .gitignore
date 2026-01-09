@@ -35,3 +35,6 @@ build/
 ### local stuff ###
 src/main/resources/application.properties
 
+### Logging ###
+logs/
+

@@ -1,6 +1,8 @@
 package com.empress.usermanagementapi.exception;
 
 import com.empress.usermanagementapi.dto.ValidationErrorResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -28,6 +30,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 @ControllerAdvice
 public class GlobalExceptionHandler {
     
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    
     /**
      * Handles validation errors when @Valid annotation fails on controller method parameters.
      * 
@@ -49,18 +53,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ValidationErrorResponse> handleValidationException(
             MethodArgumentNotValidException ex) {
         
+        log.warn("Validation failed - field count: {}", ex.getBindingResult().getFieldErrorCount());
+        
         ValidationErrorResponse response = new ValidationErrorResponse(
             "Validation failed for one or more fields"
         );
         
         // Extract all field errors from the binding result
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            log.debug("Validation error - field: {}, message: {}", 
+                    fieldError.getField(), 
+                    fieldError.getDefaultMessage());
+            
             response.addFieldError(
                 fieldError.getField(),
                 fieldError.getRejectedValue(),
                 fieldError.getDefaultMessage()
             );
         }
+        
+        log.error("Validation exception - errors: {}", response.getErrors().size());
         
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
