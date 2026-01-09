@@ -77,6 +77,7 @@ public class EmailVerificationService {
         if (opt.isEmpty()) {
             log.warn("Email verification failed - invalid token");
             LoggingUtil.clearActionType();
+            LoggingUtil.clearUserId();
             return "The provided verification link is invalid. Please check the link or request a new one.";
         }
 

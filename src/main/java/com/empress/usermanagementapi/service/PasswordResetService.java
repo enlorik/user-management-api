@@ -40,7 +40,7 @@ public class PasswordResetService {
                 log.warn("Password reset failed - user not found for email: {}", 
                         LoggingUtil.maskEmail(email));
                 LoggingUtil.clearActionType();
-                return new IllegalArgumentException("No user with email: " + email);
+                return new IllegalArgumentException("No user with email: " + LoggingUtil.maskEmail(email));
             });
 
         LoggingUtil.setUserId(user.getId());
@@ -106,6 +106,7 @@ public class PasswordResetService {
         if (cleanToken == null || cleanToken.isEmpty()) {
             log.warn("Password reset failed - invalid token format");
             LoggingUtil.clearActionType();
+            LoggingUtil.clearUserId();
             return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
@@ -114,6 +115,7 @@ public class PasswordResetService {
         if (opt.isEmpty()) {
             log.warn("Password reset failed - token not found");
             LoggingUtil.clearActionType();
+            LoggingUtil.clearUserId();
             return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
