@@ -51,8 +51,17 @@ public class LoggingInterceptor implements HandlerInterceptor {
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, 
                                Object handler, Exception ex) {
-        long startTime = (Long) request.getAttribute("startTime");
-        long duration = System.currentTimeMillis() - startTime;
+        Object startTimeAttr = request.getAttribute("startTime");
+        long duration;
+        
+        if (startTimeAttr instanceof Long) {
+            long startTime = (Long) startTimeAttr;
+            duration = System.currentTimeMillis() - startTime;
+        } else {
+            log.warn("startTime attribute missing or invalid for request: {} {}", 
+                    request.getMethod(), request.getRequestURI());
+            duration = 0; // Duration unknown, use 0 to indicate timing unavailable
+        }
         
         if (ex != null) {
             log.error("HTTP request completed with exception - method: {}, uri: {}, status: {}, duration: {}ms, exception: {}", 
