@@ -5,6 +5,7 @@ import com.empress.usermanagementapi.dto.UserResponse;
 import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.service.UserService;
+import com.empress.usermanagementapi.util.LoggingUtil;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,18 +68,24 @@ public class UserController {
      */
     @PostMapping
     public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
-        log.info("Received request to create user - username: {}", request.getUsername());
+        LoggingUtil.setActionType("USER_CREATE");
+        log.info("Received request to create user - username: {}, email: {}", 
+                request.getUsername(), 
+                LoggingUtil.maskEmail(request.getEmail()));
         
         // duplicate-username guard
         if (userService.usernameExists(request.getUsername())) {
             log.warn("User creation failed - username already exists: {}", request.getUsername());
+            LoggingUtil.clearActionType();
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this username already exists"));
         }
         // duplicate-email guard
         if (userService.emailExists(request.getEmail())) {
-            log.warn("User creation failed - email already exists: {}", request.getEmail());
+            log.warn("User creation failed - email already exists: {}", 
+                    LoggingUtil.maskEmail(request.getEmail()));
+            LoggingUtil.clearActionType();
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "A user with this email already exists"));
@@ -94,7 +101,10 @@ public class UserController {
         User saved = userService.create(user);
         UserResponse response = UserResponse.fromEntity(saved);
         
+        LoggingUtil.setUserId(saved.getId());
         log.info("User created successfully - userId: {}, username: {}", saved.getId(), saved.getUsername());
+        LoggingUtil.clearActionType();
+        LoggingUtil.clearUserId();
         
         return ResponseEntity
                 .created(URI.create("/users/" + saved.getId()))
@@ -104,11 +114,15 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(@PathVariable Long id,
                                            @RequestBody User user) {
+        LoggingUtil.setActionType("USER_UPDATE");
+        LoggingUtil.setUserId(id);
         log.info("Received request to update user - userId: {}", id);
         
         Optional<User> opt = userService.findById(id);
         if (opt.isEmpty()) {
             log.warn("User update failed - user not found: {}", id);
+            LoggingUtil.clearActionType();
+            LoggingUtil.clearUserId();
             return ResponseEntity.notFound().build();
         }
 
@@ -119,19 +133,27 @@ public class UserController {
         
         User updated = userService.updateWithPassword(existing, user.getPassword());
         log.info("User updated successfully - userId: {}", id);
+        LoggingUtil.clearActionType();
+        LoggingUtil.clearUserId();
         return ResponseEntity.ok(UserResponse.fromEntity(updated));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        LoggingUtil.setActionType("USER_DELETE");
+        LoggingUtil.setUserId(id);
         log.info("Received request to delete user - userId: {}", id);
         
         if (!userService.existsById(id)) {
             log.warn("User deletion failed - user not found: {}", id);
+            LoggingUtil.clearActionType();
+            LoggingUtil.clearUserId();
             return ResponseEntity.notFound().build();
         }
         userService.deleteById(id);
         log.info("User deleted successfully - userId: {}", id);
+        LoggingUtil.clearActionType();
+        LoggingUtil.clearUserId();
         return ResponseEntity.noContent().build();
     }
 
