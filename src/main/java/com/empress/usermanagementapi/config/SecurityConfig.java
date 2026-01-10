@@ -31,7 +31,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf
                 // Disable CSRF for REST API endpoints (stateless)
-                .ignoringRequestMatchers("/users/**", "/auth/**")
+                .ignoringRequestMatchers("/users/**", "/auth/**", "/api/**")
             )
             .authorizeHttpRequests(authz -> {
                 logger.debug("Configuring authorization rules - static resources (/css/**, /js/**) will be publicly accessible");
