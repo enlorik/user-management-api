@@ -44,6 +44,22 @@
                 <path>*.apiKey</path>
                 <path>authorization</path>
                 <path>*.authorization</path>
+                <!-- Mask email addresses (PII) -->
+                <path>email</path>
+                <path>*.email</path>
+                <!-- Mask other PII -->
+                <path>ssn</path>
+                <path>*.ssn</path>
+                <path>socialSecurityNumber</path>
+                <path>*.socialSecurityNumber</path>
+                <path>creditCard</path>
+                <path>*.creditCard</path>
+                <path>cardNumber</path>
+                <path>*.cardNumber</path>
+                <path>phone</path>
+                <path>*.phone</path>
+                <path>phoneNumber</path>
+                <path>*.phoneNumber</path>
             </jsonGeneratorDecorator>
         </encoder>
     </appender>
@@ -96,21 +112,48 @@
                 <path>*.apiKey</path>
                 <path>authorization</path>
                 <path>*.authorization</path>
+                <!-- Mask email addresses (PII) -->
+                <path>email</path>
+                <path>*.email</path>
+                <!-- Mask other PII -->
+                <path>ssn</path>
+                <path>*.ssn</path>
+                <path>socialSecurityNumber</path>
+                <path>*.socialSecurityNumber</path>
+                <path>creditCard</path>
+                <path>*.creditCard</path>
+                <path>cardNumber</path>
+                <path>*.cardNumber</path>
+                <path>phone</path>
+                <path>*.phone</path>
+                <path>phoneNumber</path>
+                <path>*.phoneNumber</path>
             </jsonGeneratorDecorator>
         </encoder>
     </appender>
     
-    <!-- Spring profile: local (human-readable console logs) -->
+    <!-- Spring profile: local (human-readable console logs with DEBUG level) -->
     <springProfile name="local">
         <root level="INFO">
             <appender-ref ref="CONSOLE_PLAIN"/>
         </root>
         <logger name="com.empress.usermanagementapi" level="DEBUG"/>
         <logger name="org.springframework.web" level="DEBUG"/>
+        <logger name="org.springframework.security" level="DEBUG"/>
     </springProfile>
     
-    <!-- Spring profile: default/production (JSON console logs) -->
-    <springProfile name="!local">
+    <!-- Spring profile: test (JSON logs with DEBUG level for comprehensive testing) -->
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE_JSON"/>
+        </root>
+        <logger name="com.empress.usermanagementapi" level="DEBUG"/>
+        <logger name="org.springframework.web" level="INFO"/>
+        <logger name="org.springframework.security" level="INFO"/>
+    </springProfile>
+    
+    <!-- Spring profile: default/production (JSON console logs with INFO level) -->
+    <springProfile name="!local &amp; !test">
         <root level="INFO">
             <appender-ref ref="CONSOLE_JSON"/>
             <appender-ref ref="FILE_JSON"/>

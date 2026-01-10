@@ -1,5 +1,6 @@
 package com.empress.usermanagementapi.config;
 
+import com.empress.usermanagementapi.util.LoggingUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -22,6 +23,10 @@ public class LoggingInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // Generate and set request ID for tracing
+        String requestId = LoggingUtil.generateRequestId();
+        request.setAttribute("requestId", requestId);
+        
         log.info("Incoming HTTP request - method: {}, uri: {}, remoteAddr: {}", 
                 request.getMethod(), 
                 request.getRequestURI(),
@@ -51,31 +56,39 @@ public class LoggingInterceptor implements HandlerInterceptor {
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, 
                                Object handler, Exception ex) {
-        Object startTimeAttr = request.getAttribute("startTime");
-        long duration;
-        
-        if (startTimeAttr instanceof Long) {
-            long startTime = (Long) startTimeAttr;
-            duration = System.currentTimeMillis() - startTime;
-        } else {
-            log.warn("startTime attribute missing or invalid for request: {} {}", 
-                    request.getMethod(), request.getRequestURI());
-            duration = 0; // Duration unknown, use 0 to indicate timing unavailable
-        }
-        
-        if (ex != null) {
-            log.error("HTTP request completed with exception - method: {}, uri: {}, status: {}, duration: {}ms, exception: {}", 
-                    request.getMethod(), 
-                    request.getRequestURI(),
-                    response.getStatus(),
-                    duration,
-                    ex.getClass().getSimpleName());
-        } else {
-            log.info("HTTP request completed - method: {}, uri: {}, status: {}, duration: {}ms", 
-                    request.getMethod(), 
-                    request.getRequestURI(),
-                    response.getStatus(),
-                    duration);
+        try {
+            // Add HTTP status to MDC for this log entry
+            LoggingUtil.setHttpStatus(response.getStatus());
+            
+            Object startTimeAttr = request.getAttribute("startTime");
+            long duration;
+            
+            if (startTimeAttr instanceof Long) {
+                long startTime = (Long) startTimeAttr;
+                duration = System.currentTimeMillis() - startTime;
+            } else {
+                log.warn("startTime attribute missing or invalid for request: {} {}", 
+                        request.getMethod(), request.getRequestURI());
+                duration = 0; // Duration unknown, use 0 to indicate timing unavailable
+            }
+            
+            if (ex != null) {
+                log.error("HTTP request completed with exception - method: {}, uri: {}, status: {}, duration: {}ms, exception: {}", 
+                        request.getMethod(), 
+                        request.getRequestURI(),
+                        response.getStatus(),
+                        duration,
+                        ex.getClass().getSimpleName());
+            } else {
+                log.info("HTTP request completed - method: {}, uri: {}, status: {}, duration: {}ms", 
+                        request.getMethod(), 
+                        request.getRequestURI(),
+                        response.getStatus(),
+                        duration);
+            }
+        } finally {
+            // Clear MDC to prevent data leakage between requests
+            LoggingUtil.clearMdc();
         }
     }
 }
