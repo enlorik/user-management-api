@@ -295,9 +295,9 @@ public class LogSummarizerService {
         
         // Registration analysis
         int registrations = actionTypeStats.getOrDefault("USER_REGISTRATION", 0);
-        int userCreates = actionTypeStats.getOrDefault("USER_CREATE", 0);
-        if (registrations > 0 || userCreates > 0) {
-            summary.append("- User growth: ").append(registrations + userCreates).append(" new users\n");
+        int userCreations = actionTypeStats.getOrDefault("USER_CREATE", 0);
+        if (registrations > 0 || userCreations > 0) {
+            summary.append("- User growth: ").append(registrations + userCreations).append(" new users\n");
         }
     }
 }

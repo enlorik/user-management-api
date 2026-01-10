@@ -21,6 +21,7 @@ public class LogSanitizerService {
     private static final Logger log = LoggerFactory.getLogger(LogSanitizerService.class);
     
     // Patterns for detecting sensitive data
+    // TOKEN_PATTERN matches hexadecimal tokens of 32+ characters (common for API keys, UUIDs, etc.)
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}");
     private static final Pattern PHONE_PATTERN = Pattern.compile("\\b\\d{3}[-.]?\\d{3}[-.]?\\d{4}\\b");
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\\b[a-fA-F0-9]{32,}\\b");

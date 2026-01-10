@@ -126,8 +126,10 @@ class LogControllerTest {
         when(logSanitizerService.sanitizeLogs(any())).thenReturn(sampleLogEntries);
         when(logSummarizerService.summarizeLogs(any(), any(), any())).thenReturn(sampleResponse);
 
-        String startTime = "2026-01-10T00:00:00Z";
-        String endTime = "2026-01-10T23:59:59Z";
+        // Use relative dates for more maintainable tests
+        Instant now = Instant.now();
+        String startTime = now.minus(java.time.Duration.ofHours(1)).toString();
+        String endTime = now.toString();
 
         // Act & Assert
         mockMvc.perform(get("/api/v1/logs/summarize")
@@ -150,10 +152,15 @@ class LogControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void testSummarizeLogs_WithStartTimeAfterEndTime_ReturnsBadRequest() throws Exception {
+        // Use relative dates for more maintainable tests
+        Instant now = Instant.now();
+        String startTime = now.toString();
+        String endTime = now.minus(java.time.Duration.ofHours(1)).toString();
+        
         // Act & Assert
         mockMvc.perform(get("/api/v1/logs/summarize")
-                        .param("startTime", "2026-01-10T23:59:59Z")
-                        .param("endTime", "2026-01-10T00:00:00Z"))
+                        .param("startTime", startTime)
+                        .param("endTime", endTime))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("startTime must be before endTime")));
     }
