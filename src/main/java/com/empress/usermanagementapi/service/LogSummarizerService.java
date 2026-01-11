@@ -29,8 +29,7 @@ public class LogSummarizerService {
     
     private final OpenAIClient openAIClient;
     
-    @Autowired
-    public LogSummarizerService(OpenAIClient openAIClient) {
+    public LogSummarizerService(@Autowired(required = false) OpenAIClient openAIClient) {
         this.openAIClient = openAIClient;
     }
     
