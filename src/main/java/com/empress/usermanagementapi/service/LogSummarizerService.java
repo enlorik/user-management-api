@@ -2,8 +2,14 @@ package com.empress.usermanagementapi.service;
 
 import com.empress.usermanagementapi.dto.LogEntry;
 import com.empress.usermanagementapi.dto.LogSummaryResponse;
+import com.openai.client.OpenAIClient;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import com.openai.models.chat.completions.ChatCompletionMessageParam;
+import com.openai.models.chat.completions.ChatCompletionUserMessageParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -13,12 +19,20 @@ import java.util.stream.Collectors;
 
 /**
  * Service for summarizing logs using AI-powered analysis.
- * Provides a pluggable interface for different AI integration strategies.
+ * Integrates with OpenAI API for intelligent log summarization.
+ * Falls back to rule-based summarization if OpenAI is unavailable.
  */
 @Service
 public class LogSummarizerService {
     
     private static final Logger log = LoggerFactory.getLogger(LogSummarizerService.class);
+    
+    private final OpenAIClient openAIClient;
+    
+    @Autowired
+    public LogSummarizerService(OpenAIClient openAIClient) {
+        this.openAIClient = openAIClient;
+    }
     
     /**
      * Summarize a list of sanitized log entries.
@@ -149,7 +163,7 @@ public class LogSummarizerService {
     
     /**
      * Generate AI-powered summary of the logs.
-     * This is a template method that can be overridden or extended with actual AI integration.
+     * Uses OpenAI API if available, otherwise falls back to rule-based summarization.
      * 
      * @param logEntries List of log entries
      * @param startTime Start time of analysis
@@ -163,6 +177,132 @@ public class LogSummarizerService {
                                      Map<String, Integer> logLevelStats,
                                      Map<String, Integer> actionTypeStats,
                                      List<String> topIssues) {
+        
+        // Try OpenAI API if client is available
+        if (openAIClient != null) {
+            try {
+                String openAISummary = generateOpenAISummary(logEntries, startTime, endTime, 
+                                                             logLevelStats, actionTypeStats, topIssues);
+                if (openAISummary != null && !openAISummary.isEmpty()) {
+                    log.info("Successfully generated OpenAI-powered log summary");
+                    return openAISummary;
+                }
+            } catch (Exception e) {
+                log.warn("Failed to generate OpenAI summary, falling back to rule-based approach: {}", e.getMessage());
+            }
+        } else {
+            log.debug("OpenAI client not configured, using rule-based summarization");
+        }
+        
+        // Fall back to rule-based summary
+        return generateRuleBasedSummary(logEntries, startTime, endTime, logLevelStats, actionTypeStats, topIssues);
+    }
+    
+    /**
+     * Generate summary using OpenAI API.
+     * 
+     * @param logEntries List of log entries
+     * @param startTime Start time of analysis
+     * @param endTime End time of analysis
+     * @param logLevelStats Log level statistics
+     * @param actionTypeStats Action type statistics
+     * @param topIssues List of top issues
+     * @return OpenAI-generated summary or null if failed
+     */
+    private String generateOpenAISummary(List<LogEntry> logEntries, Instant startTime, Instant endTime,
+                                        Map<String, Integer> logLevelStats,
+                                        Map<String, Integer> actionTypeStats,
+                                        List<String> topIssues) {
+        
+        String timePeriod = calculateTimePeriod(startTime, endTime);
+        
+        // Build prompt with log statistics
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Analyze the following log data and provide a concise, professional summary:\n\n");
+        prompt.append("Time Period: ").append(timePeriod).append("\n");
+        prompt.append("Total Events: ").append(logEntries.size()).append("\n\n");
+        
+        if (!logLevelStats.isEmpty()) {
+            prompt.append("Log Levels:\n");
+            logLevelStats.forEach((level, count) -> 
+                prompt.append("- ").append(level).append(": ").append(count).append("\n"));
+            prompt.append("\n");
+        }
+        
+        if (!actionTypeStats.isEmpty()) {
+            prompt.append("Action Types:\n");
+            actionTypeStats.forEach((action, count) -> 
+                prompt.append("- ").append(action).append(": ").append(count).append("\n"));
+            prompt.append("\n");
+        }
+        
+        if (!topIssues.isEmpty()) {
+            prompt.append("Top Issues:\n");
+            topIssues.forEach(issue -> prompt.append("- ").append(issue).append("\n"));
+            prompt.append("\n");
+        }
+        
+        // Add sample log entries for context (limit to 10 most recent)
+        prompt.append("Sample Log Entries:\n");
+        logEntries.stream()
+                .limit(10)
+                .forEach(entry -> {
+                    prompt.append("- [").append(entry.getLevel()).append("] ");
+                    if (entry.getActionType() != null) {
+                        prompt.append(entry.getActionType()).append(": ");
+                    }
+                    prompt.append(entry.getMessage()).append("\n");
+                });
+        
+        prompt.append("\nProvide a summary that includes:\n");
+        prompt.append("1. Overall system health assessment\n");
+        prompt.append("2. Key patterns or trends\n");
+        prompt.append("3. Critical issues requiring attention\n");
+        prompt.append("4. Actionable recommendations\n");
+        
+        log.debug("Calling OpenAI API with prompt length: {} characters", prompt.length());
+        
+        try {
+            ChatCompletionMessageParam userMessage = ChatCompletionMessageParam.ofUser(
+                    ChatCompletionUserMessageParam.builder()
+                            .content(ChatCompletionUserMessageParam.Content.ofText(prompt.toString()))
+                            .build()
+            );
+            
+            ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
+                    .model("gpt-3.5-turbo")
+                    .addMessage(userMessage)
+                    .maxTokens(500)
+                    .temperature(0.7)
+                    .build();
+            
+            ChatCompletion completion = openAIClient.chat().completions().create(params);
+            
+            String summary = completion.choices().get(0).message().content().get();
+            log.debug("Received OpenAI summary with length: {} characters", summary.length());
+            return summary;
+            
+        } catch (Exception e) {
+            log.error("Error calling OpenAI API: {}", e.getMessage(), e);
+            throw e;
+        }
+    }
+    
+    /**
+     * Generate rule-based summary (original implementation).
+     * 
+     * @param logEntries List of log entries
+     * @param startTime Start time of analysis
+     * @param endTime End time of analysis
+     * @param logLevelStats Log level statistics
+     * @param actionTypeStats Action type statistics
+     * @param topIssues List of top issues
+     * @return Rule-based summary
+     */
+    private String generateRuleBasedSummary(List<LogEntry> logEntries, Instant startTime, Instant endTime,
+                                           Map<String, Integer> logLevelStats,
+                                           Map<String, Integer> actionTypeStats,
+                                           List<String> topIssues) {
         
         // Calculate time period
         String timePeriod = calculateTimePeriod(startTime, endTime);

@@ -124,6 +124,13 @@
 			<version>7.4</version>
 		</dependency>
 
+		<!-- OpenAI Java SDK for AI-powered log summarization -->
+		<dependency>
+			<groupId>com.openai</groupId>
+			<artifactId>openai-java</artifactId>
+			<version>4.15.0</version>
+		</dependency>
+
 	</dependencies>
 
 	<build>
