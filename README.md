@@ -240,6 +240,31 @@ If you prefer SMTP (not recommended for production):
 
 **Note**: For local development with the `local` profile, these variables are pre-configured with dummy values in `application-local.properties`.
 
+#### AI-Powered Log Summarization (Optional)
+
+The application includes an optional OpenAI integration for AI-powered log summarization. This feature enhances the `/api/v1/logs/summarize` endpoint with intelligent insights.
+
+- `OPENAI_API_KEY`: Your OpenAI API key (get one at [platform.openai.com](https://platform.openai.com/api-keys))
+
+**How it works:**
+- If `OPENAI_API_KEY` is set, the log summarization endpoint uses OpenAI's GPT-3.5-turbo model to generate intelligent summaries
+- If not set, the application automatically falls back to rule-based summarization
+- The API key is securely stored in environment variables and never committed to source code
+
+**Benefits of AI-powered summaries:**
+- 🤖 Intelligent pattern recognition and trend analysis
+- 📊 Actionable recommendations based on log data
+- 🔍 Deeper insights into system health and issues
+- 💡 Natural language summaries that are easy to understand
+
+**Example:**
+```bash
+export OPENAI_API_KEY=sk-proj-...
+mvn spring-boot:run
+```
+
+**Note**: The OpenAI API is a paid service. Check [OpenAI's pricing](https://openai.com/pricing) for details. The endpoint uses GPT-3.5-turbo which is cost-effective for log analysis tasks.
+
 ### Building and Running
 
 #### Build the application:
