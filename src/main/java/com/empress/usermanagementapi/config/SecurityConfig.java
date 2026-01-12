@@ -52,6 +52,7 @@ public class SecurityConfig {
                     // dashboards
                     .requestMatchers("/admin/**").hasRole("ADMIN")
                     .requestMatchers("/user/**").hasAnyRole("USER", "ADMIN")
+                    .requestMatchers("/users/**").hasRole("ADMIN")
                     // everything else requires auth
                     .anyRequest().authenticated();
             })

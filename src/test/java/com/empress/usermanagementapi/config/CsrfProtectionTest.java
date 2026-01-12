@@ -15,6 +15,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -201,6 +202,13 @@ public class CsrfProtectionTest {
                         throw new AssertionError("Request returned 403 Forbidden - CSRF protection should be disabled for /users/*");
                     }
                 });
+    }
+
+    @Test
+    @WithMockUser(username = "testuser", roles = "USER")
+    void testUsersEndpointsRejectNonAdmin() throws Exception {
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isForbidden());
     }
 
     // Helper classes for JSON serialization
