@@ -10,6 +10,7 @@ import com.empress.usermanagementapi.util.LoggingUtil;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -37,6 +38,9 @@ public class RegistrationController {
     private final UserService userService;
     private final EmailVerificationService emailVerificationService;
     private final EmailService emailService;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     public RegistrationController(UserService userService,
                                   EmailVerificationService emailVerificationService,
@@ -123,8 +127,6 @@ public class RegistrationController {
             String token = emailVerificationService.createTokenForUser(created);
             log.debug("Email verification token created - userId: {}", created.getId());
 
-            // same base URL style as your reset-password links
-            String baseUrl = "https://user-management-api-java.up.railway.app";
             String verifyLink = baseUrl + "/verify-email?token=" + token;
 
             try {
