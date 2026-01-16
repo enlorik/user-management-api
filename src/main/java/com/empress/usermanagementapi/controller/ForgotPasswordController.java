@@ -6,6 +6,7 @@ import com.empress.usermanagementapi.service.UserService;
 import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.PasswordResetService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,9 @@ public class ForgotPasswordController {
     private final UserService userService;
     private final EmailService emailService;
     private final PasswordResetService passwordResetService;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     @Autowired
     public ForgotPasswordController(UserService userService,
@@ -63,7 +67,6 @@ public class ForgotPasswordController {
                 passwordResetService.createPasswordResetTokenForEmail(trimmedEmail);
         String token = tokenEntity.getToken();
 
-        String baseUrl = "https://user-management-api-java.up.railway.app";
         String resetLink = baseUrl + "/reset-password?token=" + token;
 
         try {
