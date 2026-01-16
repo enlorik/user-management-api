@@ -1,5 +1,6 @@
 package com.empress.usermanagementapi.service;
 
+import com.empress.usermanagementapi.util.LoggingUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class EmailService {
 
     private void sendEmail(String to, String subject, String textBody) {
         String emailType = determineEmailType(subject);
-        logger.info("Attempting to send {} email to: {}", emailType, to);
+        logger.info("Attempting to send {} email to: {}", emailType, LoggingUtil.maskEmail(to));
 
         int attempt = 0;
         Exception lastException = null;
@@ -86,7 +87,7 @@ public class EmailService {
 
                 if (attempt > 1) {
                     logger.info("Retry attempt {} of {} for {} email to: {}", 
-                            attempt, maxRetryAttempts, emailType, to);
+                            attempt, maxRetryAttempts, emailType, LoggingUtil.maskEmail(to));
                 }
 
                 HttpResponse<String> response =
@@ -94,12 +95,12 @@ public class EmailService {
 
                 if (response.statusCode() >= 200 && response.statusCode() < 300) {
                     logger.info("Successfully sent {} email to: {} (HTTP {})", 
-                            emailType, to, response.statusCode());
+                            emailType, LoggingUtil.maskEmail(to), response.statusCode());
                     return; // Success - exit method
                 } else {
                     String errorMsg = String.format(
                             "Failed to send %s email to: %s - HTTP %d - Response: %s",
-                            emailType, to, response.statusCode(), response.body());
+                            emailType, LoggingUtil.maskEmail(to), response.statusCode(), response.body());
                     
                     if (isRetriableError(response.statusCode())) {
                         logger.warn("{}. Retryable error detected.", errorMsg);
@@ -117,14 +118,14 @@ public class EmailService {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 logger.error("Interrupted while sending {} email to: {} on attempt {}", 
-                        emailType, to, attempt, e);
+                        emailType, LoggingUtil.maskEmail(to), attempt, e);
                 throw new RuntimeException(
-                        String.format("Interrupted while sending %s email to: %s", emailType, to), e);
+                        String.format("Interrupted while sending %s email to: %s", emailType, LoggingUtil.maskEmail(to)), e);
             } catch (Exception e) {
                 lastException = e;
                 String errorMsg = String.format(
                         "Exception while sending %s email to: %s on attempt %d: %s",
-                        emailType, to, attempt, e.getMessage());
+                        emailType, LoggingUtil.maskEmail(to), attempt, e.getMessage());
                 
                 if (attempt < maxRetryAttempts && isRetryableException(e)) {
                     logger.warn("{}. Will retry.", errorMsg, e);
@@ -133,25 +134,25 @@ public class EmailService {
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         logger.error("Interrupted during retry delay for {} email to: {}", 
-                                emailType, to, ie);
+                                emailType, LoggingUtil.maskEmail(to), ie);
                         throw new RuntimeException(
-                                String.format("Failed to send %s email to: %s", emailType, to), e);
+                                String.format("Failed to send %s email to: %s", emailType, LoggingUtil.maskEmail(to)), e);
                     }
                 } else {
                     logger.error("{}. Max retries reached or non-retryable error.", errorMsg, e);
                     throw new RuntimeException(
                             String.format("Failed to send %s email to: %s after %d attempts", 
-                                    emailType, to, attempt), e);
+                                    emailType, LoggingUtil.maskEmail(to), attempt), e);
                 }
             }
         }
 
         // If we've exhausted all retries
         logger.error("Failed to send {} email to: {} after {} attempts", 
-                emailType, to, maxRetryAttempts);
+                emailType, LoggingUtil.maskEmail(to), maxRetryAttempts);
         throw new RuntimeException(
                 String.format("Failed to send %s email to: %s after %d attempts", 
-                        emailType, to, maxRetryAttempts), lastException);
+                        emailType, LoggingUtil.maskEmail(to), maxRetryAttempts), lastException);
     }
 
     /**
