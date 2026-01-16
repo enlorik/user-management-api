@@ -1,6 +1,7 @@
 package com.empress.usermanagementapi.controller;
 
 import com.empress.usermanagementapi.dto.CreateUserRequest;
+import com.empress.usermanagementapi.dto.UpdateUserRequest;
 import com.empress.usermanagementapi.dto.UserResponse;
 import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
@@ -112,11 +113,12 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id,
-                                           @RequestBody User user) {
+    public ResponseEntity<?> updateUser(@PathVariable Long id,
+                                        @Valid @RequestBody UpdateUserRequest request) {
         LoggingUtil.setActionType("USER_UPDATE");
         LoggingUtil.setUserId(id);
-        log.info("Received request to update user - userId: {}", id);
+        log.info("Received request to update user - userId: {}, username: {}, email: {}", 
+                id, request.getUsername(), LoggingUtil.maskEmail(request.getEmail()));
         
         Optional<User> opt = userService.findById(id);
         if (opt.isEmpty()) {
@@ -127,11 +129,43 @@ public class UserController {
         }
 
         User existing = opt.get();
-        existing.setUsername(user.getUsername());
-        existing.setEmail(user.getEmail());
-        existing.setRole(user.getRole());
         
-        User updated = userService.updateWithPassword(existing, user.getPassword());
+        // Check if username is being changed to a different username
+        if (!request.getUsername().equals(existing.getUsername())) {
+            // Check if the new username is already taken by another user
+            if (userService.usernameExists(request.getUsername())) {
+                log.warn("User update failed - username already exists: {}", request.getUsername());
+                LoggingUtil.clearActionType();
+                LoggingUtil.clearUserId();
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "A user with this username already exists"));
+            }
+        }
+        
+        // Check if email is being changed to a different email
+        if (!request.getEmail().equals(existing.getEmail())) {
+            // Check if the new email is already taken by another user
+            if (userService.emailExists(request.getEmail())) {
+                log.warn("User update failed - email already exists: {}", 
+                        LoggingUtil.maskEmail(request.getEmail()));
+                LoggingUtil.clearActionType();
+                LoggingUtil.clearUserId();
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "A user with this email already exists"));
+            }
+        }
+        
+        // Update user fields from DTO
+        existing.setUsername(request.getUsername());
+        existing.setEmail(request.getEmail());
+        if (request.getRole() != null) {
+            existing.setRole(request.getRole());
+        }
+        
+        // Update with password only if provided
+        User updated = userService.updateWithPassword(existing, request.getPassword());
         log.info("User updated successfully - userId: {}", id);
         LoggingUtil.clearActionType();
         LoggingUtil.clearUserId();

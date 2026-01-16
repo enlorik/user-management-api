@@ -1,20 +1,28 @@
 package com.empress.usermanagementapi.controller;
 
 import com.empress.usermanagementapi.dto.CreateUserRequest;
+import com.empress.usermanagementapi.dto.UpdateUserRequest;
 import com.empress.usermanagementapi.dto.ValidationErrorResponse;
+import com.empress.usermanagementapi.entity.Role;
+import com.empress.usermanagementapi.entity.User;
+import com.empress.usermanagementapi.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
@@ -32,6 +40,12 @@ class UserControllerValidationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Test
     @WithMockUser(roles = "ADMIN")
@@ -450,5 +464,405 @@ class UserControllerValidationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().is3xxRedirection());
+    }
+
+    // ========== PUT /users/{id} Endpoint Tests ==========
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_EmptyUsername_ReturnsValidationError() throws Exception {
+        // Create a test user first
+        User user = createTestUser("testuser1", "test1@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("");
+        request.setEmail("newemail@example.com");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("username")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_ShortUsername_ReturnsValidationError() throws Exception {
+        User user = createTestUser("testuser2", "test2@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("ab");
+        request.setEmail("test2@example.com");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("username") && 
+                                   error.getMessage().contains("between 3 and 50")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_InvalidUsernamePattern_ReturnsValidationError() throws Exception {
+        User user = createTestUser("testuser3", "test3@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("invalid-user!");
+        request.setEmail("test3@example.com");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("username") && 
+                                   error.getMessage().contains("only letters and numbers")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_InvalidEmail_ReturnsValidationError() throws Exception {
+        User user = createTestUser("testuser4", "test4@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser4");
+        request.setEmail("notanemail");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("email")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_ShortPassword_ReturnsValidationError() throws Exception {
+        User user = createTestUser("testuser5", "test5@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser5");
+        request.setEmail("test5@example.com");
+        request.setPassword("Short1!");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("password") && 
+                                   error.getMessage().contains("between 8 and 255")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_PasswordWithoutUppercase_ReturnsValidationError() throws Exception {
+        User user = createTestUser("testuser6", "test6@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser6");
+        request.setEmail("test6@example.com");
+        request.setPassword("lowercase123!");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("password") && 
+                                   error.getMessage().contains("uppercase")));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_DuplicateUsername_ReturnsConflict() throws Exception {
+        // Create two users
+        User user1 = createTestUser("existinguser", "existing@example.com", "Password123!");
+        User user2 = createTestUser("testuser7", "test7@example.com", "Password123!");
+        
+        // Try to update user2 with user1's username
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("existinguser");
+        request.setEmail("test7@example.com");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user2.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        Map<String, String> errorResponse = objectMapper.readValue(responseBody, Map.class);
+        
+        assertEquals("A user with this username already exists", errorResponse.get("error"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_DuplicateEmail_ReturnsConflict() throws Exception {
+        // Create two users
+        User user1 = createTestUser("user1", "duplicate@example.com", "Password123!");
+        User user2 = createTestUser("user2", "test8@example.com", "Password123!");
+        
+        // Try to update user2 with user1's email
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("user2");
+        request.setEmail("duplicate@example.com");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user2.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        Map<String, String> errorResponse = objectMapper.readValue(responseBody, Map.class);
+        
+        assertEquals("A user with this email already exists", errorResponse.get("error"));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_SameUsername_Succeeds() throws Exception {
+        // Create a user
+        User user = createTestUser("testuser9", "test9@example.com", "Password123!");
+        
+        // Update user keeping the same username
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser9");
+        request.setEmail("newemail9@example.com");
+        
+        mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_SameEmail_Succeeds() throws Exception {
+        // Create a user
+        User user = createTestUser("testuser10", "test10@example.com", "Password123!");
+        
+        // Update user keeping the same email
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("newusername10");
+        request.setEmail("test10@example.com");
+        
+        mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_WithPassword_UpdatesPassword() throws Exception {
+        // Create a user
+        User user = createTestUser("testuser11", "test11@example.com", "Password123!");
+        String oldPasswordHash = user.getPassword();
+        
+        // Update user with a new password
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser11");
+        request.setEmail("test11@example.com");
+        request.setPassword("NewPassword456!");
+        
+        mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        
+        // Verify password was changed
+        User updatedUser = userRepository.findById(user.getId()).get();
+        assertNotEquals(oldPasswordHash, updatedUser.getPassword());
+        assertTrue(passwordEncoder.matches("NewPassword456!", updatedUser.getPassword()));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_WithoutPassword_KeepsExistingPassword() throws Exception {
+        // Create a user
+        User user = createTestUser("testuser12", "test12@example.com", "Password123!");
+        String oldPasswordHash = user.getPassword();
+        
+        // Update user without providing a password
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser12");
+        request.setEmail("newemail12@example.com");
+        // password is null
+        
+        mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        
+        // Verify password was NOT changed
+        User updatedUser = userRepository.findById(user.getId()).get();
+        assertEquals(oldPasswordHash, updatedUser.getPassword());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_UpdateRole_Succeeds() throws Exception {
+        // Create a user with USER role
+        User user = createTestUser("testuser13", "test13@example.com", "Password123!");
+        assertEquals(Role.USER, user.getRole());
+        
+        // Update user role to ADMIN
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser13");
+        request.setEmail("test13@example.com");
+        request.setRole(Role.ADMIN);
+        
+        mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        
+        // Verify role was changed
+        User updatedUser = userRepository.findById(user.getId()).get();
+        assertEquals(Role.ADMIN, updatedUser.getRole());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_NonExistentUser_ReturnsNotFound() throws Exception {
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser");
+        request.setEmail("test@example.com");
+        
+        mockMvc.perform(put("/users/99999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_ValidUpdate_Succeeds() throws Exception {
+        // Create a user
+        User user = createTestUser("oldusername", "old@example.com", "Password123!");
+        
+        // Update all fields
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("newusername");
+        request.setEmail("new@example.com");
+        request.setPassword("NewPassword789!");
+        request.setRole(Role.ADMIN);
+        
+        mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("newusername"))
+                .andExpect(jsonPath("$.email").value("new@example.com"))
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+        
+        // Verify changes persisted
+        User updatedUser = userRepository.findById(user.getId()).get();
+        assertEquals("newusername", updatedUser.getUsername());
+        assertEquals("new@example.com", updatedUser.getEmail());
+        assertEquals(Role.ADMIN, updatedUser.getRole());
+        assertTrue(passwordEncoder.matches("NewPassword789!", updatedUser.getPassword()));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_EmptyPassword_ReturnsValidationError() throws Exception {
+        User user = createTestUser("testuser20", "test20@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser20");
+        request.setEmail("test20@example.com");
+        request.setPassword("");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("password") && 
+                                   error.getMessage().contains("between 8 and 255")));
+    }
+
+    // Helper method to create test users
+    private User createTestUser(String username, String email, String password) {
+        User user = new User();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRole(Role.USER);
+        user.setVerified(true);
+        return userRepository.save(user);
     }
 }
