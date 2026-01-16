@@ -828,6 +828,33 @@ class UserControllerValidationTest {
         assertTrue(passwordEncoder.matches("NewPassword789!", updatedUser.getPassword()));
     }
 
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @Transactional
+    void testUpdateUser_EmptyPassword_ReturnsValidationError() throws Exception {
+        User user = createTestUser("testuser20", "test20@example.com", "Password123!");
+        
+        UpdateUserRequest request = new UpdateUserRequest();
+        request.setUsername("testuser20");
+        request.setEmail("test20@example.com");
+        request.setPassword("");
+        
+        MvcResult result = mockMvc.perform(put("/users/" + user.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        ValidationErrorResponse errorResponse = objectMapper.readValue(
+                responseBody, ValidationErrorResponse.class);
+
+        assertNotNull(errorResponse);
+        assertTrue(errorResponse.getErrors().stream()
+                .anyMatch(error -> error.getField().equals("password") && 
+                                   error.getMessage().contains("between 8 and 255")));
+    }
+
     // Helper method to create test users
     private User createTestUser(String username, String email, String password) {
         User user = new User();
