@@ -65,6 +65,10 @@ public class LoginController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("error", "Login failed"));
             }
+        } catch (org.springframework.security.authentication.DisabledException e) {
+            log.warn("Login failed - account disabled/unverified - username: {}", request.getUsername());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Account is not verified"));
         } catch (BadCredentialsException e) {
             log.warn("Login failed - bad credentials - username: {}", request.getUsername());
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

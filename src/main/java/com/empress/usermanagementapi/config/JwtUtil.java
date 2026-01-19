@@ -32,7 +32,12 @@ public class JwtUtil {
      * Generate signing key from secret.
      */
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        // Ensure the key is at least 256 bits (32 bytes) for HS256
+        if (keyBytes.length < 32) {
+            throw new IllegalArgumentException("JWT secret must be at least 256 bits (32 bytes)");
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     /**
