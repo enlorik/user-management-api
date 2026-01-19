@@ -30,6 +30,14 @@ The rate limiter:
 - Password validation enforced during registration and reset operations
 - Secure token-based password reset mechanism
 
+### JWT Authentication
+- **Stateless authentication** using JSON Web Tokens (JWT)
+- Token-based API authentication for RESTful operations
+- Configurable token expiration (default: 24 hours)
+- HS256 algorithm for token signing with secure secret key
+- Role-based access control with JWT tokens
+- See [JWT Authentication Guide](#jwt-authentication) for usage details
+
 ### Logging and Sanitization
 - Structured JSON logging with contextual metadata (request ID, user ID, action type)
 - Automatic masking of sensitive data (passwords, emails, tokens)
@@ -47,13 +55,15 @@ The REST API provides the following core endpoints:
 - `DELETE /users/{id}` - Delete a user
 
 **Authentication**:
+- `POST /auth/login` - Authenticate and receive JWT token
 - `POST /register` - Register new account with email verification
-- `POST /login` - Authenticate user
+- `POST /login` - Web form login
 - `GET /verify-email?token=...` - Verify email address
 - `POST /forgot-password` - Request password reset
 - `POST /reset-password?token=...` - Reset password with token
 
-**Self-Service**:
+**Self-Service** (authenticated users):
+- `GET /users/me` - Get own user information
 - `PUT /users/me` - Update own email and password
 
 **Log Analysis** (admin only):
@@ -160,6 +170,119 @@ mvn test -Dtest="**/controller/**Test"
 # Integration tests only
 mvn test -Dtest="**/config/**Test,**/service/**Test,**/*ApplicationTests"
 ```
+
+## JWT Authentication
+
+This API uses JWT (JSON Web Tokens) for stateless authentication. JWT tokens are issued on successful login and must be included in subsequent API requests.
+
+### Configuration
+
+JWT authentication requires two environment variables:
+
+```bash
+# JWT secret key for signing tokens (minimum 256 bits / 32 bytes)
+# Generate a secure key using: openssl rand -base64 64
+export JWT_SECRET="your-secure-secret-key-here"
+
+# JWT token expiration time in milliseconds (default: 24 hours)
+export JWT_EXPIRATION=86400000
+```
+
+**Important**: Always use a strong, randomly generated secret in production. Never commit secrets to version control.
+
+### Authentication Flow
+
+#### 1. Login and Obtain JWT Token
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "user@example.com",
+    "password": "YourPassword123!"
+  }'
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNjc5...",
+  "username": "user@example.com",
+  "role": "USER"
+}
+```
+
+#### 2. Use JWT Token for API Requests
+
+Include the token in the `Authorization` header with `Bearer` prefix:
+
+```bash
+# Get own user information
+curl -X GET http://localhost:8080/users/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..."
+
+# Update own information
+curl -X PUT http://localhost:8080/users/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newemail@example.com"
+  }'
+```
+
+### Role-Based Access Control
+
+The API enforces role-based access control using JWT tokens:
+
+**USER Role** (Standard users):
+- ✅ `GET /users/me` - View own profile
+- ✅ `PUT /users/me` - Update own profile  
+- ❌ Admin-only endpoints (users CRUD) - Access denied
+
+**ADMIN Role** (Administrators):
+- ✅ All USER permissions
+- ✅ `GET /users` - List all users
+- ✅ `POST /users` - Create new users
+- ✅ `PUT /users/{id}` - Update any user
+- ✅ `DELETE /users/{id}` - Delete users
+- ✅ `GET /api/v1/logs/summarize` - View log summaries
+
+### Security Features
+
+- **Stateless authentication**: No server-side session storage required
+- **Token expiration**: Tokens automatically expire after configured time
+- **Secure signing**: HS256 algorithm with minimum 256-bit secret key
+- **Role validation**: Automatic role extraction and validation from tokens
+- **Email verification**: Unverified accounts cannot obtain tokens
+
+### Testing JWT Authentication
+
+The repository includes comprehensive JWT authentication tests:
+
+```bash
+# Run JWT authentication tests
+mvn test -Dtest=JwtAuthenticationTest
+
+# Run all security-related tests
+mvn test -Dtest="**/controller/JwtAuthenticationTest,**/config/SecurityConfigTest"
+```
+
+### Troubleshooting
+
+**401 Unauthorized Errors:**
+- Check that the token is included in the `Authorization` header
+- Verify the token hasn't expired (default: 24 hours)
+- Ensure the token uses the `Bearer ` prefix
+- Confirm the user's email is verified
+
+**403 Forbidden Errors:**
+- The user doesn't have the required role for the endpoint
+- Admin-only endpoints require ADMIN role
+
+**500 Internal Server Error:**
+- Check that `JWT_SECRET` is configured and at least 32 bytes long
+- Verify `JWT_EXPIRATION` is a valid number (milliseconds)
 
 ## Additional Documentation
 

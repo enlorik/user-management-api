@@ -34,6 +34,12 @@ class RegistrationControllerTest {
     
     @MockBean
     private com.empress.usermanagementapi.config.RateLimitConfig rateLimitConfig;
+    
+    @MockBean
+    private com.empress.usermanagementapi.config.JwtUtil jwtUtil;
+    
+    @MockBean
+    private com.empress.usermanagementapi.filter.JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Test
     void testRegisterWithValidInput() throws Exception {
