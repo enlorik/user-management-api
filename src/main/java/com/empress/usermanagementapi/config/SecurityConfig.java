@@ -1,5 +1,6 @@
 package com.empress.usermanagementapi.config;
 
+import com.empress.usermanagementapi.filter.JwtAuthenticationFilter;
 import com.empress.usermanagementapi.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,12 +12,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableMethodSecurity
@@ -24,17 +27,27 @@ public class SecurityConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        logger.info("Configuring security filter chain with static resource access");
+        logger.info("Configuring security filter chain with JWT support");
         
         http
             .csrf(csrf -> csrf
-                // Disable CSRF for REST API endpoints (stateless)
+                // Disable CSRF for REST API endpoints (stateless with JWT)
                 .ignoringRequestMatchers("/users/**", "/auth/**", "/api/**")
             )
+            .sessionManagement(session -> session
+                // Stateless session management for JWT
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
             .authorizeHttpRequests(authz -> {
-                logger.debug("Configuring authorization rules - static resources (/css/**, /js/**) will be publicly accessible");
+                logger.debug("Configuring authorization rules");
                 authz
                     // static resources always public - must be first to avoid redirects
                     .requestMatchers("/css/**", "/js/**").permitAll()
@@ -44,6 +57,8 @@ public class SecurityConfig {
                     .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                     // auth + registration pages
                     .requestMatchers("/login", "/register").permitAll()
+                    // JWT authentication endpoint
+                    .requestMatchers("/auth/login").permitAll()
                     // forgot / reset password (all methods and subpaths)
                     .requestMatchers("/forgot-password", "/forgot-password/**",
                                      "/reset-password", "/reset-password/**").permitAll()
@@ -63,7 +78,9 @@ public class SecurityConfig {
             .logout(logout -> logout
                 .logoutSuccessUrl("/login?logout")
                 .permitAll()
-            );
+            )
+            // Add JWT filter before UsernamePasswordAuthenticationFilter
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
