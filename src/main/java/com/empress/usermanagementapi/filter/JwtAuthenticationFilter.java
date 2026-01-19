@@ -45,7 +45,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extractUsername(jwt);
             } catch (Exception e) {
-                logger.warn("Failed to extract username from JWT token: " + e.getMessage());
+                // Log generic error without exposing token details
+                logger.debug("Failed to parse JWT token", e);
             }
         }
 
