@@ -37,6 +37,13 @@ public class JwtUtil {
         if (keyBytes.length < 32) {
             throw new IllegalArgumentException("JWT secret must be at least 256 bits (32 bytes)");
         }
+        // Use first 32 bytes for consistent key size (HMAC-SHA256 requires 256 bits)
+        // If secret is longer, truncate to 32 bytes for deterministic key generation
+        if (keyBytes.length > 32) {
+            byte[] truncated = new byte[32];
+            System.arraycopy(keyBytes, 0, truncated, 0, 32);
+            keyBytes = truncated;
+        }
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
