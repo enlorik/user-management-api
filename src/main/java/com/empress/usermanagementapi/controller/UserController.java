@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -41,8 +42,11 @@ public class UserController {
         this.userService = userService;
     }
 
+    // ——— Admin-only endpoints ———
+    
     // return all users sorted by id (ascending)
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> getAllUsers() {
         log.debug("Retrieving all users");
         List<UserResponse> users = userService.findAll(Sort.by(Sort.Direction.ASC, "id"))
@@ -68,6 +72,7 @@ public class UserController {
      * @return ResponseEntity with the created user or error details
      */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createUser(@Valid @RequestBody CreateUserRequest request) {
         LoggingUtil.setActionType("USER_CREATE");
         log.info("Received request to create user - username: {}, email: {}", 
@@ -113,6 +118,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateUser(@PathVariable Long id,
                                         @Valid @RequestBody UpdateUserRequest request) {
         LoggingUtil.setActionType("USER_UPDATE");
@@ -173,6 +179,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         LoggingUtil.setActionType("USER_DELETE");
         LoggingUtil.setUserId(id);
@@ -191,7 +198,32 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
-    // ——— Self-service endpoint ———
+    // ——— Self-service endpoints (authenticated users) ———
+    
+    /**
+     * Get current user's own information.
+     * This endpoint allows authenticated users to fetch their own data.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<?> getMe(
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.User principal
+    ) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        
+        User me = userService.findByUsername(principal.getUsername());
+        if (me == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        
+        return ResponseEntity.ok(UserResponse.fromEntity(me));
+    }
+    
+    /**
+     * Update current user's own information.
+     * Users can update their own email and password.
+     */
     @PutMapping("/me")
     public ResponseEntity<?> updateMe(
             @AuthenticationPrincipal org.springframework.security.core.userdetails.User principal,
