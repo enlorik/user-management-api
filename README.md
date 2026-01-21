@@ -236,17 +236,17 @@ curl -X PUT http://localhost:8080/users/me \
 The API enforces role-based access control using JWT tokens:
 
 **USER Role** (Standard users):
-- ✅ `GET /users/me` - View own profile
-- ✅ `PUT /users/me` - Update own profile  
-- ❌ Admin-only endpoints (users CRUD) - Access denied
+- `GET /users/me` - View own profile
+- `PUT /users/me` - Update own profile  
+- **Access denied**: Admin-only endpoints (users CRUD)
 
 **ADMIN Role** (Administrators):
-- ✅ All USER permissions
-- ✅ `GET /users` - List all users
-- ✅ `POST /users` - Create new users
-- ✅ `PUT /users/{id}` - Update any user
-- ✅ `DELETE /users/{id}` - Delete users
-- ✅ `GET /api/v1/logs/summarize` - View log summaries
+- All USER permissions
+- `GET /users` - List all users
+- `POST /users` - Create new users
+- `PUT /users/{id}` - Update any user
+- `DELETE /users/{id}` - Delete users
+- `GET /api/v1/logs/summarize` - View log summaries
 
 ### Security Features
 
