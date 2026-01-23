@@ -414,11 +414,11 @@
           shown = true;
         }
         if (!shown) {
-          // Show generic error in password field if no specific field matched
-          passwordError.textContent = editingUserId
+          // Show generic error in the email field (general error location)
+          emailError.textContent = editingUserId
             ? 'Failed to update user.'
             : 'Failed to create user.';
-          passwordError.classList.remove('d-none');
+          emailError.classList.remove('d-none');
         }
       }
     };
