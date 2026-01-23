@@ -104,6 +104,7 @@
       </div>
       <div class="col-md-3">
         <input type="password" id="newPassword" class="form-control" placeholder="Password"/>
+        <div id="passwordError" class="form-error d-none"></div>
       </div>
       <div class="col-md-1">
         <select id="newRole" class="form-select">
@@ -143,6 +144,7 @@
     function clearMessages() {
       document.getElementById('usernameError').classList.add('d-none');
       document.getElementById('emailError').classList.add('d-none');
+      document.getElementById('passwordError').classList.add('d-none');
       document.getElementById('createSuccess').classList.add('d-none');
     }
 
@@ -260,6 +262,57 @@
       });
     }
 
+    /**
+     * Validates password against backend rules (ValidationPatterns.java)
+     * @param {string} password - The password to validate
+     * @returns {object} - { valid: boolean, message: string }
+     */
+    function validatePassword(password) {
+      // Backend requirements from ValidationPatterns.PASSWORD_PATTERN:
+      // - At least 8 characters
+      // - At least one lowercase letter
+      // - At least one uppercase letter
+      // - At least one digit
+      // - At least one special character
+
+      if (password.length < 8) {
+        return {
+          valid: false,
+          message: 'Password must be at least 8 characters long.'
+        };
+      }
+
+      if (!/[a-z]/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one lowercase letter.'
+        };
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one uppercase letter.'
+        };
+      }
+
+      if (!/\d/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one digit.'
+        };
+      }
+
+      if (!/[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>/~`]/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one special character (!@#$%^&* etc.).'
+        };
+      }
+
+      return { valid: true, message: '' };
+    }
+
     // Create / Update submit
     document.getElementById('createForm').onsubmit = async (e) => {
       e.preventDefault();
@@ -271,12 +324,28 @@
       const roleField     = document.getElementById('newRole');
       const usernameError = document.getElementById('usernameError');
       const emailError    = document.getElementById('emailError');
+      const passwordError = document.getElementById('passwordError');
       const successBox    = document.getElementById('createSuccess');
 
       const username = usernameField.value.trim();
       const email    = emailField.value.trim();
       const role     = roleField.value;
       const password = passwordField.value;
+
+      // Validate password if provided (required for create, optional for update)
+      if (password) {
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+          passwordError.textContent = passwordValidation.message;
+          passwordError.classList.remove('d-none');
+          return;
+        }
+      } else if (!editingUserId) {
+        // Password is required when creating a new user
+        passwordError.textContent = 'Password is required when creating a new user.';
+        passwordError.classList.remove('d-none');
+        return;
+      }
 
       try {
         const users = await authFetch('/users', { method: 'GET' });
@@ -339,11 +408,17 @@
           emailError.classList.remove('d-none');
           shown = true;
         }
+        if (msg.includes('password')) {
+          passwordError.textContent = err.message;
+          passwordError.classList.remove('d-none');
+          shown = true;
+        }
         if (!shown) {
-          emailError.textContent = editingUserId
+          // Show generic error in password field if no specific field matched
+          passwordError.textContent = editingUserId
             ? 'Failed to update user.'
             : 'Failed to create user.';
-          emailError.classList.remove('d-none');
+          passwordError.classList.remove('d-none');
         }
       }
     };

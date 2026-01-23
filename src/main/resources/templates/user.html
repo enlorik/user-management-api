@@ -57,6 +57,7 @@
                        id="password"
                        class="form-control"
                        placeholder="Leave blank to keep unchanged"/>
+                <div id="passwordError" class="form-error d-none"></div>
               </div>
               <div class="col-12 d-grid d-sm-flex justify-content-sm-end">
                 <button type="submit" class="btn btn-primary">
@@ -94,9 +95,61 @@
       return data;
     }
 
+    /**
+     * Validates password against backend rules (ValidationPatterns.java)
+     * @param {string} password - The password to validate
+     * @returns {object} - { valid: boolean, message: string }
+     */
+    function validatePassword(password) {
+      // Backend requirements from ValidationPatterns.PASSWORD_PATTERN:
+      // - At least 8 characters
+      // - At least one lowercase letter
+      // - At least one uppercase letter
+      // - At least one digit
+      // - At least one special character
+
+      if (password.length < 8) {
+        return {
+          valid: false,
+          message: 'Password must be at least 8 characters long.'
+        };
+      }
+
+      if (!/[a-z]/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one lowercase letter.'
+        };
+      }
+
+      if (!/[A-Z]/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one uppercase letter.'
+        };
+      }
+
+      if (!/\d/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one digit.'
+        };
+      }
+
+      if (!/[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>/~`]/.test(password)) {
+        return {
+          valid: false,
+          message: 'Password must contain at least one special character (!@#$%^&* etc.).'
+        };
+      }
+
+      return { valid: true, message: '' };
+    }
+
     function clearMessages() {
       document.getElementById('profileSuccess').classList.add('d-none');
       document.getElementById('profileError').classList.add('d-none');
+      document.getElementById('passwordError').classList.add('d-none');
     }
 
     document.getElementById('profileForm').onsubmit = async e => {
@@ -105,9 +158,19 @@
 
       const email    = document.getElementById('email').value;
       const password = document.getElementById('password').value;
+      const passwordError = document.getElementById('passwordError');
       const payload  = { email };
 
-      if (password) payload.password = password;
+      // Validate password if provided (optional for profile update)
+      if (password) {
+        const passwordValidation = validatePassword(password);
+        if (!passwordValidation.valid) {
+          passwordError.textContent = passwordValidation.message;
+          passwordError.classList.remove('d-none');
+          return;
+        }
+        payload.password = password;
+      }
 
       try {
         await authFetch('/users/me', {
@@ -121,8 +184,17 @@
         successBox.classList.remove('d-none');
       } catch (err) {
         const errorBox = document.getElementById('profileError');
-        errorBox.textContent = 'Update failed: ' + (err.message || err);
-        errorBox.classList.remove('d-none');
+        const msg = (err.message || '').toLowerCase();
+        
+        // Check if it's a password-related error
+        if (msg.includes('password')) {
+          const passwordError = document.getElementById('passwordError');
+          passwordError.textContent = err.message;
+          passwordError.classList.remove('d-none');
+        } else {
+          errorBox.textContent = 'Update failed: ' + (err.message || err);
+          errorBox.classList.remove('d-none');
+        }
       }
     };
   </script>
