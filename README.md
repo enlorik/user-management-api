@@ -73,7 +73,7 @@ docker run -d -p 8080:8080 \
   -e PGDATABASE=userdb \
   -e PGUSER=dbuser \
   -e PGPASSWORD=dbpass \
-  user-management-api
+  user-management-api \
 
 License
 
