@@ -133,10 +133,12 @@ This application is optimized for deployment on Railway with PostgreSQL. The con
 
 **HikariCP Connection Pool** (Production)
 - Connection validation before use (`SELECT 1` test query) to prevent authentication errors
-- Short connection lifetime (30 minutes max) to prevent stale connections
+- Connection lifecycle management:
+  - Idle timeout: 10 minutes (connections recycled after inactivity)
+  - Maximum lifetime: 30 minutes (absolute connection age limit)
+  - Connection timeout: 30 seconds (time to wait for new connection)
 - Optimized pool size (5 connections maximum, 2 minimum idle) for Railway PostgreSQL limits
 - Automatic leak detection and connection recycling
-- Connection timeout configured at 30 seconds
 
 **Flyway Database Migrations**
 - Automatically runs PostgreSQL-specific migrations on startup
