@@ -171,6 +171,37 @@ mvn test -Dtest="**/controller/**Test"
 mvn test -Dtest="**/config/**Test,**/service/**Test,**/*ApplicationTests"
 ```
 
+### Railway Deployment Notes
+
+#### Database Connection Configuration
+
+The application is configured with optimized HikariCP settings for Railway's PostgreSQL:
+
+- **Connection validation**: Connections are tested before use to prevent stale connection errors
+- **Short connection lifetime**: 10 minutes (prevents Railway from closing idle connections)
+- **Small pool size**: 5 connections maximum (respects Railway's connection limits)
+- **Automatic collation updates**: Flyway migration handles PostgreSQL collation version mismatches
+
+#### Environment Variables for Railway
+
+The following environment variables are supported for tuning (defaults are production-ready):
+
+```bash
+HIKARI_MAX_POOL_SIZE=5           # Maximum connection pool size
+HIKARI_MIN_IDLE=2                # Minimum idle connections
+HIKARI_CONNECTION_TIMEOUT=20000  # Connection timeout in milliseconds
+HIKARI_MAX_LIFETIME=600000       # Max connection lifetime (10 minutes)
+HIKARI_IDLE_TIMEOUT=300000       # Idle timeout (5 minutes)
+```
+
+#### Common Railway Issues
+
+**Problem**: "Failed to validate connection" or "connection has been closed"
+**Solution**: The HikariCP configuration automatically handles this by validating connections before use.
+
+**Problem**: "database has a collation version mismatch"
+**Solution**: The Flyway migration `V1__refresh_collation_version.sql` automatically fixes this on deployment.
+
 ## JWT Authentication
 
 This API uses JWT (JSON Web Tokens) for stateless authentication. JWT tokens are issued on successful login and must be included in subsequent API requests.
