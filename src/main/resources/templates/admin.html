@@ -74,6 +74,7 @@
       line-height: 1.6;
       max-height: 400px;
       overflow-y: auto;
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -216,7 +217,7 @@
           <!-- AI Summary Text -->
           <div class="alert alert-info">
             <h6 class="alert-heading">AI Analysis</h6>
-            <div id="summaryText" style="white-space: pre-wrap;">Loading...</div>
+            <div id="summaryText">Loading...</div>
           </div>
 
           <!-- Action Types Distribution -->
@@ -592,10 +593,13 @@
         // Display log levels
         const logLevelsEl = document.getElementById('logLevels');
         if (response.logLevelStats && Object.keys(response.logLevelStats).length > 0) {
-          const levelsHTML = Object.entries(response.logLevelStats)
-            .map(([level, count]) => `<span class="badge bg-secondary me-1">${level}: ${count}</span>`)
-            .join(' ');
-          logLevelsEl.innerHTML = levelsHTML;
+          logLevelsEl.innerHTML = ''; // Clear previous content
+          Object.entries(response.logLevelStats).forEach(([level, count]) => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-secondary me-1';
+            badge.textContent = `${level}: ${count}`;
+            logLevelsEl.appendChild(badge);
+          });
         } else {
           logLevelsEl.textContent = 'No data';
         }
@@ -607,10 +611,13 @@
         const actionTypesEl = document.getElementById('actionTypes');
         const actionTypesSection = document.getElementById('actionTypesSection');
         if (response.actionTypeStats && Object.keys(response.actionTypeStats).length > 0) {
-          const actionsHTML = Object.entries(response.actionTypeStats)
-            .map(([action, count]) => `<span class="badge bg-info me-1">${action}: ${count}</span>`)
-            .join(' ');
-          actionTypesEl.innerHTML = actionsHTML;
+          actionTypesEl.innerHTML = ''; // Clear previous content
+          Object.entries(response.actionTypeStats).forEach(([action, count]) => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-info me-1';
+            badge.textContent = `${action}: ${count}`;
+            actionTypesEl.appendChild(badge);
+          });
           actionTypesSection.classList.remove('d-none');
         } else {
           actionTypesSection.classList.add('d-none');
@@ -620,9 +627,12 @@
         const topIssuesEl = document.getElementById('topIssues');
         const topIssuesSection = document.getElementById('topIssuesSection');
         if (response.topIssues && response.topIssues.length > 0) {
-          topIssuesEl.innerHTML = response.topIssues
-            .map(issue => `<li>${issue}</li>`)
-            .join('');
+          topIssuesEl.innerHTML = ''; // Clear previous content
+          response.topIssues.forEach(issue => {
+            const li = document.createElement('li');
+            li.textContent = issue;
+            topIssuesEl.appendChild(li);
+          });
           topIssuesSection.classList.remove('d-none');
         } else {
           topIssuesSection.classList.add('d-none');
