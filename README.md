@@ -15,7 +15,7 @@ This API provides comprehensive user management functionality including:
 
 ### Rate Limiting
 Critical public endpoints are protected with IP-based rate limiting to prevent brute force attacks:
-- **`/login`** and **`/auth/login`**: 10 requests per minute
+- **`/login`**: 10 requests per minute
 - **`/register`**: 20 requests per 10 minutes  
 - **`/verify-email`**: 30 requests per minute
 
@@ -25,18 +25,22 @@ The rate limiter:
 - Supports `X-Forwarded-For` header for proxy/load balancer scenarios
 - Automatically cleans up expired buckets every 30 minutes
 
+**Implementation**: See [`RateLimitFilter.java`](src/main/java/com/empress/usermanagementapi/filter/RateLimitFilter.java) and [`RateLimitConfig.java`](src/main/java/com/empress/usermanagementapi/config/RateLimitConfig.java)
+
 ### Password Security
 - All passwords are encrypted using **BCrypt** hashing before storage
 - Password validation enforced during registration and reset operations
 - Secure token-based password reset mechanism
 
-### JWT Authentication
-- **Stateless authentication** using JSON Web Tokens (JWT)
-- Token-based API authentication for RESTful operations
-- Configurable token expiration (default: 24 hours)
-- HS256 algorithm for token signing with secure secret key
-- Role-based access control with JWT tokens
-- See [JWT Authentication Guide](#jwt-authentication) for usage details
+**Implementation**: See [`SecurityConfig.java`](src/main/java/com/empress/usermanagementapi/config/SecurityConfig.java) for BCrypt configuration and [`PasswordResetService.java`](src/main/java/com/empress/usermanagementapi/service/PasswordResetService.java) for token management
+
+### Session-Based Authentication
+- **Form-based login** with HTTP session management via Spring Security
+- Session cookies for maintaining authenticated state
+- CSRF protection for web forms (disabled for REST API endpoints)
+- Role-based access control (ADMIN/USER roles)
+- Email verification required before login
+- See [`SecurityConfig.java`](src/main/java/com/empress/usermanagementapi/config/SecurityConfig.java) for security configuration
 
 ### Logging and Sanitization
 - Structured JSON logging with contextual metadata (request ID, user ID, action type)
@@ -46,28 +50,32 @@ The rate limiter:
 - See [LOGGING.md](LOGGING.md) for detailed logging documentation
 
 ### API Endpoints
-The REST API provides the following core endpoints:
+The application provides both web pages and REST API endpoints:
 
-**User Management** (admin only):
-- `GET /users` - List all users
+**Web Pages**:
+- `GET /login` - Login page ([`PageController.java`](src/main/java/com/empress/usermanagementapi/config/PageController.java))
+- `GET /register` - Registration page
+- `GET /admin` - Admin dashboard (admin only)
+- `GET /user` - User dashboard (authenticated users)
+
+**User Management REST API** (admin only):
+- `GET /users` - List all users ([`UserController.java`](src/main/java/com/empress/usermanagementapi/controller/UserController.java))
 - `POST /users` - Create a new user
 - `PUT /users/{id}` - Update user details
 - `DELETE /users/{id}` - Delete a user
 
-**Authentication**:
-- `POST /auth/login` - Authenticate and receive JWT token
-- `POST /register` - Register new account with email verification
-- `POST /login` - Web form login
-- `GET /verify-email?token=...` - Verify email address
-- `POST /forgot-password` - Request password reset
-- `POST /reset-password?token=...` - Reset password with token
+**Authentication & Registration**:
+- `POST /register` - Register new account with email verification ([`RegistrationController.java`](src/main/java/com/empress/usermanagementapi/controller/RegistrationController.java))
+- `GET /verify-email?token=...` - Verify email address ([`EmailVerificationController.java`](src/main/java/com/empress/usermanagementapi/controller/EmailVerificationController.java))
+- `POST /forgot-password` - Request password reset ([`ForgotPasswordController.java`](src/main/java/com/empress/usermanagementapi/controller/ForgotPasswordController.java))
+- `POST /reset-password?token=...` - Reset password with token ([`ResetPasswordController.java`](src/main/java/com/empress/usermanagementapi/controller/ResetPasswordController.java))
 
-**Self-Service** (authenticated users):
+**Self-Service REST API** (authenticated users):
 - `GET /users/me` - Get own user information
 - `PUT /users/me` - Update own email and password
 
-**Log Analysis** (admin only):
-- `GET /api/v1/logs/summarize` - Get AI-powered log summaries with filtering options
+**Log Analysis REST API** (admin only):
+- `GET /api/v1/logs/summarize` - Get AI-powered log summaries with filtering options ([`LogController.java`](src/main/java/com/empress/usermanagementapi/controller/LogController.java))
 
 For detailed API documentation, see the Swagger UI at `/swagger-ui.html` when running the application.
 
@@ -165,7 +173,7 @@ The application supports three environment profiles:
 
 #### Railway Environment Variables
 
-The following environment variables can be set in Railway to customize database behavior:
+The following environment variables can be set in Railway to customize the application:
 
 ```bash
 # Database Connection (automatically set by Railway PostgreSQL)
@@ -182,10 +190,12 @@ HIKARI_CONNECTION_TIMEOUT=20000      # Connection timeout (20000ms = 20 sec)
 HIKARI_IDLE_TIMEOUT=300000           # Idle timeout (300000ms = 5 min)
 HIKARI_MAX_LIFETIME=600000           # Max lifetime (600000ms = 10 min)
 
-# Other required environment variables
-JWT_SECRET=<your-secret-key>         # Generate with: openssl rand -base64 64
+# Email Configuration (required for email verification and password reset)
 RESEND_API_KEY=<your-resend-key>     # For email functionality
 RESEND_FROM=<sender-email>           # Email sender address
+
+# OpenAI Integration (optional, for AI-powered log summarization)
+OPENAI_API_KEY=<your-openai-key>     # Optional: enables AI log summarization
 ```
 
 #### Troubleshooting Railway Deployment
@@ -299,76 +309,37 @@ HIKARI_IDLE_TIMEOUT=300000       # Idle timeout (5 minutes)
 - Check Flyway migration history with: `SELECT * FROM flyway_schema_history;`
 - To force re-run, delete the failed entry from `flyway_schema_history` and redeploy
 
-## JWT Authentication
+## Session-Based Authentication
 
-This API uses JWT (JSON Web Tokens) for stateless authentication. JWT tokens are issued on successful login and must be included in subsequent API requests.
+This application uses traditional **session-based authentication** with Spring Security, providing secure user authentication through HTTP sessions and cookies.
 
-### Configuration
+### How It Works
 
-JWT authentication requires two environment variables:
+1. **User submits credentials** via the `/login` form
+2. **Spring Security validates** credentials against the database (BCrypt password verification)
+3. **Session is created** upon successful authentication
+4. **Session cookie** (JSESSIONID) is sent to the browser
+5. **Subsequent requests** automatically include the session cookie for authentication
 
-```bash
-# JWT secret key for signing tokens (minimum 256 bits / 32 bytes)
-# Generate a secure key using: openssl rand -base64 64
-export JWT_SECRET="your-secure-secret-key-here"
+### Security Features
 
-# JWT token expiration time in milliseconds (default: 24 hours)
-export JWT_EXPIRATION=86400000
-```
-
-**Important**: Always use a strong, randomly generated secret in production. Never commit secrets to version control.
-
-### Authentication Flow
-
-#### 1. Login and Obtain JWT Token
-
-**Request:**
-```bash
-curl -X POST http://localhost:8080/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "user@example.com",
-    "password": "YourPassword123!"
-  }'
-```
-
-**Response:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwiaWF0IjoxNjc5...",
-  "username": "user@example.com",
-  "role": "USER"
-}
-```
-
-#### 2. Use JWT Token for API Requests
-
-Include the token in the `Authorization` header with `Bearer` prefix:
-
-```bash
-# Get own user information
-curl -X GET http://localhost:8080/users/me \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..."
-
-# Update own information
-curl -X PUT http://localhost:8080/users/me \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "newemail@example.com"
-  }'
-```
+- **BCrypt password hashing**: All passwords encrypted before storage
+- **Session management**: Secure HTTP session handling via Spring Security
+- **CSRF protection**: Enabled for web forms, disabled for REST API endpoints (`/users/**`, `/api/**`)
+- **Role-based access control**: ADMIN and USER roles with method-level security
+- **Email verification**: Users cannot login until email is verified
+- **Account locking**: Unverified accounts are automatically disabled
 
 ### Role-Based Access Control
 
-The API enforces role-based access control using JWT tokens:
-
 **USER Role** (Standard users):
+- Access to `/user` dashboard
 - `GET /users/me` - View own profile
 - `PUT /users/me` - Update own profile  
-- **Access denied**: Admin-only endpoints (users CRUD)
+- **Access denied**: Admin-only endpoints
 
 **ADMIN Role** (Administrators):
+- Access to `/admin` dashboard
 - All USER permissions
 - `GET /users` - List all users
 - `POST /users` - Create new users
@@ -376,41 +347,83 @@ The API enforces role-based access control using JWT tokens:
 - `DELETE /users/{id}` - Delete users
 - `GET /api/v1/logs/summarize` - View log summaries
 
-### Security Features
+### Authentication Flow Example
 
-- **Stateless authentication**: No server-side session storage required
-- **Token expiration**: Tokens automatically expire after configured time
-- **Secure signing**: HS256 algorithm with minimum 256-bit secret key
-- **Role validation**: Automatic role extraction and validation from tokens
-- **Email verification**: Unverified accounts cannot obtain tokens
+**Web Application Flow:**
+```bash
+# 1. Navigate to login page
+curl http://localhost:8080/login
 
-### Testing JWT Authentication
+# 2. Submit credentials (browser automatically handles session cookies)
+# After successful login, user is redirected to /admin or /user dashboard
 
-The repository includes comprehensive JWT authentication tests:
+# 3. Access protected resources (session cookie included automatically)
+curl http://localhost:8080/users/me --cookie "JSESSIONID=<session-id>"
+```
+
+**REST API Flow:**
+```bash
+# 1. Authenticate and get session cookie
+curl -X POST http://localhost:8080/login \
+  -c cookies.txt \
+  -d "username=user@example.com" \
+  -d "password=YourPassword123!"
+
+# 2. Use session cookie for API requests
+curl -X GET http://localhost:8080/users/me \
+  -b cookies.txt
+
+# 3. Update profile
+curl -X PUT http://localhost:8080/users/me \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"email": "newemail@example.com"}'
+```
+
+### Configuration Reference
+
+The security configuration is defined in [`SecurityConfig.java`](src/main/java/com/empress/usermanagementapi/config/SecurityConfig.java):
+
+- **Lines 28-68**: Security filter chain configuration
+- **Lines 58-62**: Form login configuration with custom success handler
+- **Lines 71-77**: Login success handler (redirects based on role)
+- **Lines 80-82**: BCrypt password encoder bean
+- **Lines 91-109**: User details service with email verification check
+
+### Testing Authentication
+
+The repository includes comprehensive authentication tests:
 
 ```bash
-# Run JWT authentication tests
-mvn test -Dtest=JwtAuthenticationTest
+# Run session-based authentication tests
+mvn test -Dtest=SessionBasedAuthTest
 
-# Run all security-related tests
-mvn test -Dtest="**/controller/JwtAuthenticationTest,**/config/SecurityConfigTest"
+# Run user controller validation tests
+mvn test -Dtest=UserControllerValidationTest
+
+# Run CSRF protection tests
+mvn test -Dtest=CsrfProtectionTest
+
+# Run all configuration tests
+mvn test -Dtest="**/config/**Test"
 ```
 
 ### Troubleshooting
 
 **401 Unauthorized Errors:**
-- Check that the token is included in the `Authorization` header
-- Verify the token hasn't expired (default: 24 hours)
-- Ensure the token uses the `Bearer ` prefix
-- Confirm the user's email is verified
+- User is not logged in or session has expired
+- Navigate to `/login` to authenticate
+- Verify the user's email is verified
 
 **403 Forbidden Errors:**
-- The user doesn't have the required role for the endpoint
+- User doesn't have the required role for the endpoint
 - Admin-only endpoints require ADMIN role
+- Check role assignment in the database
 
-**500 Internal Server Error:**
-- Check that `JWT_SECRET` is configured and at least 32 bytes long
-- Verify `JWT_EXPIRATION` is a valid number (milliseconds)
+**Session Expiration:**
+- Sessions expire after period of inactivity (default: 30 minutes)
+- User must log in again after session expires
+- Configure session timeout in `application.properties` if needed
 
 ## Additional Documentation
 
