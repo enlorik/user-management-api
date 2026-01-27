@@ -5,6 +5,7 @@
 DO $$
 BEGIN
     -- Refresh collation version for the current database
+    -- Using current_database() (PostgreSQL built-in function) and quote_ident() for safety
     EXECUTE 'ALTER DATABASE ' || quote_ident(current_database()) || ' REFRESH COLLATION VERSION';
     
     -- Log success
