@@ -132,10 +132,11 @@ This application is optimized for deployment on Railway with PostgreSQL. The con
 #### Database Configuration
 
 **HikariCP Connection Pool** (Production)
-- Connection validation before use (`SELECT 1` test query)
-- Short connection lifetime (10 minutes) to prevent stale connections
-- Optimized pool size (5 connections) for Railway limits
+- Connection validation before use (`SELECT 1` test query) to prevent authentication errors
+- Short connection lifetime (30 minutes max) to prevent stale connections
+- Optimized pool size (5 connections maximum, 2 minimum idle) for Railway PostgreSQL limits
 - Automatic leak detection and connection recycling
+- Connection timeout configured at 30 seconds
 
 **Flyway Database Migrations**
 - Automatically runs PostgreSQL-specific migrations on startup
@@ -176,11 +177,11 @@ PGUSER=<railway-user>
 PGPASSWORD=<railway-password>
 
 # HikariCP Connection Pool (optional, defaults shown)
-HIKARI_MAX_POOL_SIZE=10              # Maximum connections in pool
-HIKARI_MIN_IDLE=2                    # Minimum idle connections
-HIKARI_CONNECTION_TIMEOUT=30000      # Connection timeout (30000ms = 30 sec)
-HIKARI_IDLE_TIMEOUT=600000           # Idle timeout (600000ms = 10 min)
-HIKARI_MAX_LIFETIME=1800000          # Max lifetime (1800000ms = 30 min)
+HIKARI_MAX_POOL_SIZE=5                # Maximum connections in pool
+HIKARI_MIN_IDLE=2                     # Minimum idle connections
+HIKARI_CONNECTION_TIMEOUT=30000       # Connection timeout (30000ms = 30 sec)
+HIKARI_IDLE_TIMEOUT=600000            # Idle timeout (600000ms = 10 min)
+HIKARI_MAX_LIFETIME=1800000           # Max lifetime (1800000ms = 30 min)
 
 # Other required environment variables
 JWT_SECRET=<your-secret-key>         # Generate with: openssl rand -base64 64
