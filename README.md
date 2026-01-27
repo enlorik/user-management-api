@@ -1,59 +1,82 @@
 # user-management-api
 
-A streamlined Spring Boot REST API for managing user accounts with authentication, registration, and profile updates. 
+A streamlined Spring Boot application for managing user accounts with authentication, registration, profile updates, and basic REST endpoints.
 
 ## About
-- Authentication & Authorization
-- Registration with Email Verification
-- Password Reset Functionality
-- User Profile Management
-- AI-powered Log Summarization
+
+- Authentication & authorization with role-based access (ADMIN / USER)
+- Registration with email verification
+- Password reset via secure tokens
+- User profile management (`/users/me`)
+- Optional AI-powered log summarization
 
 ## Features Overview
+
 ### Rate Limiting
-- Protects endpoints with IP-based limits.
-- Token bucket algorithm (Bucket4j).
-- E.g., `/login`: 10 req/min.
+- IP-based rate limiting on critical public endpoints
+- Token bucket algorithm (Bucket4j)
+- Example: `/login` limited to 10 requests per minute
 
 ### Secure Password Handling
-- **BCrypt** password hashing.
-- Secure token-based reset mechanism.
+- Passwords hashed with **BCrypt**
+- Token-based password reset flow
+- Email-based reset link generation
 
-### Simplified Session-Based Authentication
-- HTTP-based sessions with role-based access (ADMIN/USER).
-- Email verification required for login.
+### Session-Based Authentication
+- Form login with HTTP sessions (Spring Security)
+- Role-based redirects to `/admin` and `/user` dashboards
+- Email verification required before login
 
 ### Structured Logging
-- JSON-based logs with sensitive data masking.
-- Optional AI log summaries (`/api/v1/logs/summarize`).
+- JSON-style logs with sensitive data masked
+- Optional AI log summaries via `/api/v1/logs/summarize`
 
-## REST API: Key Endpoints
-**Public**:
-- `/register`: New user registration.
-- `/verify-email`: Verify account.
+## REST API – Key Endpoints
 
-**Authenticated Users**:
-- `GET /users/me`: View profile.
-- `PUT /users/me`: Update profile.
+**Public**
 
-**Admin Only**:
-- `GET /users`: List users.
-- `DELETE /users/{id}`: Remove user.
+- `POST /register` – Create a new account
+- `GET /verify-email?token=...` – Verify account
+- `POST /forgot-password` – Request password reset
+- `POST /reset-password?token=...` – Set new password
+
+**Authenticated Users**
+
+- `GET /users/me` – View own profile
+- `PUT /users/me` – Update own email / password
+
+**Admin Only**
+
+- `GET /users` – List all users
+- `POST /users` – Create user
+- `PUT /users/{id}` – Update any user
+- `DELETE /users/{id}` – Delete user
 
 ## Requirements
-- **Java 17+**, **Spring Boot 3.4.5**
-- **Maven 3.6+**
-- Database: PostgreSQL or H2 (local dev).
+
+- Java 17+
+- Spring Boot 3.4.5
+- Maven 3.6+
+- PostgreSQL (prod) or H2 (local dev)
 
 ## Quick Setup
-### Local Run (H2 Database):
+
+**Local (H2, no external DB):**
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
-### Docker (PostgreSQL Required):
+
+**Docker (PostgreSQL):**
 ```bash
-docker run -d -p 8080:8080 -e DB_SETTINGS ... user-management-api
+docker run -d -p 8080:8080 \  
+  -e PGHOST=your-db-host \  
+  -e PGPORT=5432 \  
+  -e PGDATABASE=userdb \  
+  -e PGUSER=dbuser \  
+  -e PGPASSWORD=dbpass \  
+  user-management-api
 ```
 
 ## License
-For demonstration purposes only.
+
+For educational and demonstration purposes.
