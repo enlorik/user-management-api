@@ -178,9 +178,9 @@ PGPASSWORD=<railway-password>
 # HikariCP Connection Pool (optional, defaults shown)
 HIKARI_MAX_POOL_SIZE=10              # Maximum connections in pool
 HIKARI_MIN_IDLE=2                    # Minimum idle connections
-HIKARI_CONNECTION_TIMEOUT=30000      # Connection timeout (ms)
-HIKARI_IDLE_TIMEOUT=600000           # Idle connection timeout (10 min)
-HIKARI_MAX_LIFETIME=1800000          # Max connection lifetime (30 min)
+HIKARI_CONNECTION_TIMEOUT=30000      # Connection timeout (30000ms = 30 sec)
+HIKARI_IDLE_TIMEOUT=600000           # Idle timeout (600000ms = 10 min)
+HIKARI_MAX_LIFETIME=1800000          # Max lifetime (1800000ms = 30 min)
 
 # Other required environment variables
 JWT_SECRET=<your-secret-key>         # Generate with: openssl rand -base64 64
@@ -199,8 +199,9 @@ RESEND_FROM=<sender-email>           # Email sender address
 **Problem**: "database has a collation version mismatch"  
 **Solution**: The Flyway migration `V1__refresh_collation_version.sql` automatically fixes this on deployment. If the migration fails:
 - Check Flyway migration history: `SELECT * FROM flyway_schema_history;`
-- Manually refresh collation: `ALTER DATABASE <dbname> REFRESH COLLATION VERSION;`
-- To force re-run a failed migration, delete the entry from `flyway_schema_history` and redeploy
+- Manually refresh collation (requires superuser): `ALTER DATABASE <dbname> REFRESH COLLATION VERSION;`
+- Use Flyway repair command if needed: `mvn flyway:repair` or via Railway CLI
+- As a last resort, use Flyway baseline to mark migration as completed: `mvn flyway:baseline`
 
 **Problem**: Schema validation errors on startup  
 **Solution**: The application uses Hibernate `ddl-auto=update` which automatically manages schema changes. If you see validation errors:
