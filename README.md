@@ -395,14 +395,17 @@ The security configuration is defined in [`SecurityConfig.java`](src/main/java/c
 The repository includes comprehensive authentication tests:
 
 ```bash
-# Run security configuration tests
-mvn test -Dtest=SecurityConfigTest
-
 # Run session-based authentication tests
-mvn test -Dtest=SessionBasedAuthenticationTest
+mvn test -Dtest=SessionBasedAuthTest
 
-# Run all security-related tests
-mvn test -Dtest="**/config/SecurityConfigTest,**/controller/UserControllerTest"
+# Run user controller validation tests
+mvn test -Dtest=UserControllerValidationTest
+
+# Run CSRF protection tests
+mvn test -Dtest=CsrfProtectionTest
+
+# Run all configuration tests
+mvn test -Dtest="**/config/**Test"
 ```
 
 ### Troubleshooting
