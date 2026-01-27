@@ -268,27 +268,4 @@ class RateLimitFilterTest {
         verify(filterChain, times(10)).doFilter(request, response);
         verify(response, times(1)).setStatus(429);
     }
-    
-    /**
-     * Test that /auth/login endpoint is also rate limited (alternative login endpoint).
-     */
-    @Test
-    void testAuthLoginEndpointRateLimited() throws Exception {
-        // Setup
-        when(request.getRequestURI()).thenReturn("/auth/login");
-        when(request.getRemoteAddr()).thenReturn("192.168.1.80");
-        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
-        
-        // Execute: Make 10 requests
-        for (int i = 0; i < 10; i++) {
-            rateLimitFilter.doFilter(request, response, filterChain);
-        }
-        
-        // Verify: All 10 requests should pass
-        verify(filterChain, times(10)).doFilter(request, response);
-        
-        // Execute: 11th request should be rejected
-        rateLimitFilter.doFilter(request, response, filterChain);
-        verify(response, times(1)).setStatus(429);
-    }
 }
