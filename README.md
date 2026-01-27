@@ -150,7 +150,7 @@ The application supports three environment profiles:
 1. **Production** (`application.properties`) - Default for Railway
    - PostgreSQL database with Flyway migrations enabled
    - HikariCP connection pooling optimized for Railway
-   - Hibernate DDL mode: `update` (manages schema automatically)
+   - Hibernate DDL mode: `validate` (schema managed by Flyway migrations)
 
 2. **Local Development** (`application-local.properties`) - Activated with `--spring.profiles.active=local`
    - H2 in-memory database
@@ -176,11 +176,11 @@ PGUSER=<railway-user>
 PGPASSWORD=<railway-password>
 
 # HikariCP Connection Pool (optional, defaults shown)
-HIKARI_MAX_POOL_SIZE=10              # Maximum connections in pool
+HIKARI_MAX_POOL_SIZE=5               # Maximum connections in pool
 HIKARI_MIN_IDLE=2                    # Minimum idle connections
-HIKARI_CONNECTION_TIMEOUT=30000      # Connection timeout (30000ms = 30 sec)
-HIKARI_IDLE_TIMEOUT=600000           # Idle timeout (600000ms = 10 min)
-HIKARI_MAX_LIFETIME=1800000          # Max lifetime (1800000ms = 30 min)
+HIKARI_CONNECTION_TIMEOUT=20000      # Connection timeout (20000ms = 20 sec)
+HIKARI_IDLE_TIMEOUT=300000           # Idle timeout (300000ms = 5 min)
+HIKARI_MAX_LIFETIME=600000           # Max lifetime (600000ms = 10 min)
 
 # Other required environment variables
 JWT_SECRET=<your-secret-key>         # Generate with: openssl rand -base64 64
@@ -204,7 +204,7 @@ RESEND_FROM=<sender-email>           # Email sender address
 - As a last resort, use Flyway baseline to mark migration as completed: `mvn flyway:baseline`
 
 **Problem**: Schema validation errors on startup  
-**Solution**: The application uses Hibernate `ddl-auto=update` which automatically manages schema changes. If you see validation errors:
+**Solution**: The application uses Hibernate `ddl-auto=validate` with Flyway managing schema changes. If you see validation errors:
 - Check that Flyway migrations have run successfully
 - Verify database user has sufficient privileges
 - Check Railway logs for detailed error messages
@@ -261,6 +261,43 @@ mvn test -Dtest="**/controller/**Test"
 # Integration tests only
 mvn test -Dtest="**/config/**Test,**/service/**Test,**/*ApplicationTests"
 ```
+
+### Railway Deployment Notes
+
+#### Database Connection Configuration
+
+The application is configured with optimized HikariCP settings for Railway's PostgreSQL:
+
+- **Connection validation**: Connections are tested before use to prevent stale connection errors
+- **Short connection lifetime**: 10 minutes (prevents Railway from closing idle connections)
+- **Small pool size**: 5 connections maximum (respects Railway's connection limits)
+- **Automatic collation updates**: Flyway migration handles PostgreSQL collation version mismatches
+
+#### Environment Variables for Railway
+
+The following environment variables are supported for tuning (defaults are production-ready):
+
+```bash
+HIKARI_MAX_POOL_SIZE=5           # Maximum connection pool size
+HIKARI_MIN_IDLE=2                # Minimum idle connections
+HIKARI_CONNECTION_TIMEOUT=20000  # Connection timeout in milliseconds
+HIKARI_MAX_LIFETIME=600000       # Max connection lifetime (10 minutes)
+HIKARI_IDLE_TIMEOUT=300000       # Idle timeout (5 minutes)
+```
+
+#### Common Railway Issues
+
+**Problem**: "Failed to validate connection" or "connection has been closed"
+**Solution**: The HikariCP configuration automatically handles this by validating connections before use.
+- If the issue persists, check Railway logs for connection pool exhaustion
+- Consider adjusting `HIKARI_MAX_POOL_SIZE` if you see "Connection is not available" errors
+- Verify that your Railway PostgreSQL instance is running and accessible
+
+**Problem**: "database has a collation version mismatch"
+**Solution**: The Flyway migration `V1__refresh_collation_version.sql` automatically fixes this on deployment.
+- If the migration fails, you can manually run: `ALTER DATABASE your_database_name REFRESH COLLATION VERSION;`
+- Check Flyway migration history with: `SELECT * FROM flyway_schema_history;`
+- To force re-run, delete the failed entry from `flyway_schema_history` and redeploy
 
 ## JWT Authentication
 
