@@ -56,6 +56,25 @@
       padding:.25rem .5rem;
       font-size:.9rem;
     }
+
+    /* AI Summary section styling */
+    .stat-card {
+      padding: 1rem;
+      background: #f8f9fa;
+      border-radius: .5rem;
+      height: 100%;
+    }
+    .stat-card h3 {
+      color: #0d6efd;
+      margin: 0;
+      font-size: 2rem;
+    }
+    #summaryText {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -121,6 +140,110 @@
     <div class="msg-reserve">
       <div id="createSuccess" class="form-success d-none">User created successfully.</div>
     </div>
+
+    <hr/>
+    <!-- AI SUMMARY SECTION -->
+    <h3>AI Log Summary</h3>
+    <p class="text-muted">Generate AI-powered insights from system logs based on selected filters.</p>
+    
+    <form id="summaryForm" class="row g-3">
+      <div class="col-md-3">
+        <label for="summaryStartTime" class="form-label">Start Time</label>
+        <input type="datetime-local" id="summaryStartTime" class="form-control" />
+      </div>
+      <div class="col-md-3">
+        <label for="summaryEndTime" class="form-label">End Time</label>
+        <input type="datetime-local" id="summaryEndTime" class="form-control" />
+      </div>
+      <div class="col-md-2">
+        <label for="summaryLogLevel" class="form-label">Log Level</label>
+        <select id="summaryLogLevel" class="form-select">
+          <option value="">All Levels</option>
+          <option value="INFO">INFO</option>
+          <option value="WARN">WARN</option>
+          <option value="ERROR">ERROR</option>
+          <option value="DEBUG">DEBUG</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label for="summaryActionType" class="form-label">Action Type</label>
+        <select id="summaryActionType" class="form-select">
+          <option value="">All Actions</option>
+          <option value="USER_LOGIN">User Login</option>
+          <option value="USER_REGISTRATION">User Registration</option>
+          <option value="USER_CREATE">User Create</option>
+          <option value="USER_UPDATE">User Update</option>
+          <option value="USER_DELETE">User Delete</option>
+          <option value="EMAIL_VERIFICATION">Email Verification</option>
+          <option value="PASSWORD_RESET">Password Reset</option>
+          <option value="LOG_SUMMARIZATION">Log Summarization</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex align-items-end">
+        <button id="generateSummaryBtn" type="submit" class="btn btn-primary w-100">Generate Summary</button>
+      </div>
+    </form>
+
+    <!-- Summary Results -->
+    <div id="summaryResults" class="mt-4 d-none">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Summary Results</h5>
+        </div>
+        <div class="card-body">
+          <!-- Summary Stats -->
+          <div class="row mb-3">
+            <div class="col-md-3">
+              <div class="stat-card">
+                <h6 class="text-muted">Total Logs</h6>
+                <h3 id="totalLogs">0</h3>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="stat-card">
+                <h6 class="text-muted">Time Range</h6>
+                <p id="timeRange" class="mb-0 small">-</p>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="stat-card">
+                <h6 class="text-muted">Log Levels</h6>
+                <div id="logLevels" class="small">-</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Summary Text -->
+          <div class="alert alert-info">
+            <h6 class="alert-heading">AI Analysis</h6>
+            <div id="summaryText" style="white-space: pre-wrap;">Loading...</div>
+          </div>
+
+          <!-- Action Types Distribution -->
+          <div id="actionTypesSection" class="mt-3">
+            <h6>Action Types Distribution</h6>
+            <div id="actionTypes" class="small"></div>
+          </div>
+
+          <!-- Top Issues -->
+          <div id="topIssuesSection" class="mt-3">
+            <h6>Top Issues</h6>
+            <ul id="topIssues"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading spinner -->
+    <div id="summaryLoading" class="text-center mt-4 d-none">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2">Generating AI summary...</p>
+    </div>
+
+    <!-- Error message -->
+    <div id="summaryError" class="alert alert-danger mt-4 d-none" role="alert"></div>
   </div>
 
   <script>
@@ -425,6 +548,100 @@
 
     // Initial load
     loadUsers();
+
+    // AI Summary functionality
+    document.getElementById('summaryForm').onsubmit = async (e) => {
+      e.preventDefault();
+      
+      const startTimeInput = document.getElementById('summaryStartTime').value;
+      const endTimeInput = document.getElementById('summaryEndTime').value;
+      const logLevel = document.getElementById('summaryLogLevel').value;
+      const actionType = document.getElementById('summaryActionType').value;
+      
+      // Convert local datetime to ISO8601 UTC format
+      const startTime = startTimeInput ? new Date(startTimeInput).toISOString() : null;
+      const endTime = endTimeInput ? new Date(endTimeInput).toISOString() : null;
+      
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (startTime) params.append('startTime', startTime);
+      if (endTime) params.append('endTime', endTime);
+      if (logLevel) params.append('logLevel', logLevel);
+      if (actionType) params.append('actionType', actionType);
+      
+      // Show loading state
+      document.getElementById('summaryLoading').classList.remove('d-none');
+      document.getElementById('summaryResults').classList.add('d-none');
+      document.getElementById('summaryError').classList.add('d-none');
+      
+      try {
+        const response = await authFetch(`/api/v1/logs/summarize?${params}`, { method: 'GET' });
+        
+        // Update stats
+        document.getElementById('totalLogs').textContent = response.totalLogs || 0;
+        
+        // Format time range
+        const formatTime = (isoStr) => {
+          if (!isoStr) return 'Not specified';
+          const date = new Date(isoStr);
+          return date.toLocaleString();
+        };
+        const timeRangeText = `${formatTime(response.startTime)} - ${formatTime(response.endTime)}`;
+        document.getElementById('timeRange').textContent = timeRangeText;
+        
+        // Display log levels
+        const logLevelsEl = document.getElementById('logLevels');
+        if (response.logLevelStats && Object.keys(response.logLevelStats).length > 0) {
+          const levelsHTML = Object.entries(response.logLevelStats)
+            .map(([level, count]) => `<span class="badge bg-secondary me-1">${level}: ${count}</span>`)
+            .join(' ');
+          logLevelsEl.innerHTML = levelsHTML;
+        } else {
+          logLevelsEl.textContent = 'No data';
+        }
+        
+        // Display summary text
+        document.getElementById('summaryText').textContent = response.summary || 'No summary available.';
+        
+        // Display action types
+        const actionTypesEl = document.getElementById('actionTypes');
+        const actionTypesSection = document.getElementById('actionTypesSection');
+        if (response.actionTypeStats && Object.keys(response.actionTypeStats).length > 0) {
+          const actionsHTML = Object.entries(response.actionTypeStats)
+            .map(([action, count]) => `<span class="badge bg-info me-1">${action}: ${count}</span>`)
+            .join(' ');
+          actionTypesEl.innerHTML = actionsHTML;
+          actionTypesSection.classList.remove('d-none');
+        } else {
+          actionTypesSection.classList.add('d-none');
+        }
+        
+        // Display top issues
+        const topIssuesEl = document.getElementById('topIssues');
+        const topIssuesSection = document.getElementById('topIssuesSection');
+        if (response.topIssues && response.topIssues.length > 0) {
+          topIssuesEl.innerHTML = response.topIssues
+            .map(issue => `<li>${issue}</li>`)
+            .join('');
+          topIssuesSection.classList.remove('d-none');
+        } else {
+          topIssuesSection.classList.add('d-none');
+        }
+        
+        // Show results
+        document.getElementById('summaryResults').classList.remove('d-none');
+        
+        // Scroll to results
+        document.getElementById('summaryResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+      } catch (err) {
+        const errorEl = document.getElementById('summaryError');
+        errorEl.textContent = 'Error generating summary: ' + (err.message || 'Unknown error');
+        errorEl.classList.remove('d-none');
+      } finally {
+        document.getElementById('summaryLoading').classList.add('d-none');
+      }
+    };
   </script>
 </body>
 </html>
