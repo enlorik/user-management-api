@@ -32,6 +32,7 @@ A streamlined Spring Boot application for managing user accounts with authentica
 - Optional AI log summaries via `/api/v1/logs/summarize`
 
 ## REST API – Key Endpoints
+(try them out here)[https://user-management-api-java.up.railway.app/swagger-ui/index.html]
 
 **Public**
 
