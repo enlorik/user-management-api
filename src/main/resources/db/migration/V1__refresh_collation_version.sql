@@ -4,11 +4,11 @@
 
 DO $$
 BEGIN
-    -- Refresh collation version for the railway database
-    EXECUTE 'ALTER DATABASE railway REFRESH COLLATION VERSION';
+    -- Refresh collation version for the current database
+    EXECUTE 'ALTER DATABASE ' || quote_ident(current_database()) || ' REFRESH COLLATION VERSION';
     
     -- Log success
-    RAISE NOTICE 'Successfully refreshed collation version for railway database';
+    RAISE NOTICE 'Successfully refreshed collation version for database: %', current_database();
 EXCEPTION
     WHEN OTHERS THEN
         -- Log the error but don't fail the migration

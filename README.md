@@ -198,9 +198,15 @@ HIKARI_IDLE_TIMEOUT=300000       # Idle timeout (5 minutes)
 
 **Problem**: "Failed to validate connection" or "connection has been closed"
 **Solution**: The HikariCP configuration automatically handles this by validating connections before use.
+- If the issue persists, check Railway logs for connection pool exhaustion
+- Consider adjusting `HIKARI_MAX_POOL_SIZE` if you see "Connection is not available" errors
+- Verify that your Railway PostgreSQL instance is running and accessible
 
 **Problem**: "database has a collation version mismatch"
 **Solution**: The Flyway migration `V1__refresh_collation_version.sql` automatically fixes this on deployment.
+- If the migration fails, you can manually run: `ALTER DATABASE <dbname> REFRESH COLLATION VERSION;`
+- Check Flyway migration history with: `SELECT * FROM flyway_schema_history;`
+- To force re-run, delete the failed entry from `flyway_schema_history` and redeploy
 
 ## JWT Authentication
 
