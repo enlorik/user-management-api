@@ -32,7 +32,7 @@ A streamlined Spring Boot application for managing user accounts with authentica
 - Optional AI log summaries via `/api/v1/logs/summarize`
 
 ## REST API – Key Endpoints
-[try them out hereon swagger](https://user-management-api-java.up.railway.app/swagger-ui/index.html)
+[try out the REST API on swagger](https://user-management-api-java.up.railway.app/swagger-ui/index.html)
 
 **Public**
 
@@ -70,12 +70,12 @@ mvn spring-boot:run -Dspring-boot.run.profiles=local
 Docker (PostgreSQL):
 
 ```
-docker run -d -p 8080:8080 \
-  -e PGHOST=your-db-host \
-  -e PGPORT=5432 \
-  -e PGDATABASE=userdb \
-  -e PGUSER=dbuser \
-  -e PGPASSWORD=dbpass \
+docker run -d -p 8080:8080 
+  -e PGHOST=your-db-host 
+  -e PGPORT=5432 
+  -e PGDATABASE=userdb 
+  -e PGUSER=dbuser
+  -e PGPASSWORD=dbpass 
   user-management-api 
 ```
 License
