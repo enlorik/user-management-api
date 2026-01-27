@@ -64,17 +64,19 @@ A streamlined Spring Boot application for managing user accounts with authentica
 **Local (H2, no external DB):**
 ```bash
 mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
 
 Docker (PostgreSQL):
 
+```
 docker run -d -p 8080:8080 \
   -e PGHOST=your-db-host \
   -e PGPORT=5432 \
   -e PGDATABASE=userdb \
   -e PGUSER=dbuser \
   -e PGPASSWORD=dbpass \
-  user-management-api \
-
+  user-management-api 
+```
 License
 
 For educational and demonstration purposes.
