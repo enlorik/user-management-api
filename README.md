@@ -125,6 +125,97 @@ Then open `http://localhost:8080` in your browser.
    mvn spring-boot:run
    ```
 
+### Railway Deployment
+
+This application is optimized for deployment on Railway with PostgreSQL. The configuration handles connection pooling, database migrations, and collation version management automatically.
+
+#### Database Configuration
+
+**HikariCP Connection Pool** (Production)
+- Connection validation before use (`SELECT 1` test query)
+- Short connection lifetime (10 minutes) to prevent stale connections
+- Optimized pool size (5 connections) for Railway limits
+- Automatic leak detection and connection recycling
+
+**Flyway Database Migrations**
+- Automatically runs PostgreSQL-specific migrations on startup
+- Handles collation version mismatches (common on Railway)
+- Gracefully skips migrations in non-PostgreSQL environments
+- Creates schema history table if it doesn't exist
+
+#### Environment Configuration
+
+The application supports three environment profiles:
+
+1. **Production** (`application.properties`) - Default for Railway
+   - PostgreSQL database with Flyway migrations enabled
+   - HikariCP connection pooling optimized for Railway
+   - Hibernate DDL mode: `update` (manages schema automatically)
+
+2. **Local Development** (`application-local.properties`) - Activated with `--spring.profiles.active=local`
+   - H2 in-memory database
+   - Flyway migrations disabled
+   - Hibernate DDL mode: `create-drop` (recreates schema on startup)
+
+3. **Testing** (`test/resources/application.properties`) - Automatic for tests
+   - H2 in-memory database
+   - Flyway migrations disabled
+   - Minimal HikariCP pooling (1 connection)
+   - Hibernate DDL mode: `create-drop`
+
+#### Railway Environment Variables
+
+The following environment variables can be set in Railway to customize database behavior:
+
+```bash
+# Database Connection (automatically set by Railway PostgreSQL)
+PGHOST=<railway-host>
+PGPORT=<railway-port>
+PGDATABASE=<railway-database>
+PGUSER=<railway-user>
+PGPASSWORD=<railway-password>
+
+# HikariCP Connection Pool (optional, defaults shown)
+HIKARI_MAX_POOL_SIZE=10              # Maximum connections in pool
+HIKARI_MIN_IDLE=2                    # Minimum idle connections
+HIKARI_CONNECTION_TIMEOUT=30000      # Connection timeout (30000ms = 30 sec)
+HIKARI_IDLE_TIMEOUT=600000           # Idle timeout (600000ms = 10 min)
+HIKARI_MAX_LIFETIME=1800000          # Max lifetime (1800000ms = 30 min)
+
+# Other required environment variables
+JWT_SECRET=<your-secret-key>         # Generate with: openssl rand -base64 64
+RESEND_API_KEY=<your-resend-key>     # For email functionality
+RESEND_FROM=<sender-email>           # Email sender address
+```
+
+#### Troubleshooting Railway Deployment
+
+**Problem**: "Failed to validate connection" or "connection has been closed"  
+**Solution**: The HikariCP configuration automatically handles this with connection validation and recycling. If issues persist:
+- Check Railway logs for connection pool exhaustion
+- Verify PostgreSQL instance is running and accessible
+- Consider adjusting `HIKARI_MAX_POOL_SIZE` if seeing "Connection is not available" errors
+
+**Problem**: "database has a collation version mismatch"  
+**Solution**: The Flyway migration `V1__refresh_collation_version.sql` automatically fixes this on deployment. If the migration fails:
+- Check Flyway migration history: `SELECT * FROM flyway_schema_history;`
+- Manually refresh collation (requires superuser): `ALTER DATABASE <dbname> REFRESH COLLATION VERSION;`
+- Use Flyway repair command if needed: `mvn flyway:repair` or via Railway CLI
+- As a last resort, use Flyway baseline to mark migration as completed: `mvn flyway:baseline`
+
+**Problem**: Schema validation errors on startup  
+**Solution**: The application uses Hibernate `ddl-auto=update` which automatically manages schema changes. If you see validation errors:
+- Check that Flyway migrations have run successfully
+- Verify database user has sufficient privileges
+- Check Railway logs for detailed error messages
+
+**Problem**: Tests fail locally or in CI  
+**Solution**: Test environment is isolated from production configuration:
+- Tests use H2 in-memory database, not PostgreSQL
+- Flyway migrations are automatically disabled for tests
+- HikariCP uses minimal pooling (1 connection) for tests
+- No Railway-specific configuration should affect tests
+
 ### Running with Docker
 
 1. **Build the image**:
