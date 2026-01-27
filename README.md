@@ -31,7 +31,7 @@ A streamlined Spring Boot application for managing user accounts with authentica
 - JSON-style logs with sensitive data masked
 - Optional AI log summaries via `/api/v1/logs/summarize`
 
-## REST API – Key Endpoints
+## REST API – Key Endpoints ([View Full API Documentation](http://localhost:8080/swagger-ui.html))
 
 **Public**
 
