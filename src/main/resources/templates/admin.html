@@ -254,7 +254,7 @@
     <!-- Health Results -->
     <div id="healthResults" class="mt-4">
       <div class="card shadow-sm">
-        <div class="card-header bg-success text-white">
+        <div id="healthCardHeader" class="card-header bg-success text-white">
           <h5 class="mb-0">System Health Status</h5>
         </div>
         <div class="card-body">
@@ -599,36 +599,32 @@
     // System Health functionality
     async function loadHealthData() {
       try {
-        // Fetch health data from actuator endpoint
-        const response = await fetch('/actuator/health', {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch health data');
-        }
-        
-        const healthData = await response.json();
+        // Fetch health data from actuator endpoint using the existing authFetch helper
+        const healthData = await authFetch('/actuator/health', { method: 'GET' });
         
         // Update overall application status
         const appStatusEl = document.getElementById('appStatus');
         const status = healthData.status || 'UNKNOWN';
         appStatusEl.textContent = status;
         
+        // Update card header based on overall status
+        const cardHeader = document.getElementById('healthCardHeader');
+        cardHeader.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-secondary');
+        
         // Set color based on status
         appStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
         if (status === 'UP') {
           appStatusEl.classList.add('text-success');
+          cardHeader.classList.add('bg-success');
         } else if (status === 'DOWN') {
           appStatusEl.classList.add('text-danger');
+          cardHeader.classList.add('bg-danger');
         } else if (status === 'OUT_OF_SERVICE') {
           appStatusEl.classList.add('text-warning');
+          cardHeader.classList.add('bg-warning');
         } else {
           appStatusEl.classList.add('text-muted');
+          cardHeader.classList.add('bg-secondary');
         }
         
         // Update database status
@@ -672,12 +668,24 @@
               badgeClass = 'bg-warning';
             }
             
-            detailsHtml += `<span class="badge ${badgeClass} me-2 mb-1">${key}: ${componentStatus}</span>`;
+            // Create badge element safely using DOM manipulation to prevent XSS
+            const badge = document.createElement('span');
+            badge.className = `badge ${badgeClass} me-2 mb-1`;
+            badge.textContent = `${key}: ${componentStatus}`;
+            
+            // Temporarily append to a container
+            const tempDiv = document.createElement('div');
+            tempDiv.appendChild(badge);
+            detailsHtml += tempDiv.innerHTML;
             
             // Show database details if available
-            if (key === 'db' && component.details) {
-              detailsHtml += '<br><span class="text-muted ms-2">Database: ' + 
-                            (component.details.database || 'Unknown') + '</span>';
+            if (key === 'db' && component.details && component.details.database) {
+              const dbDetail = document.createElement('span');
+              dbDetail.className = 'text-muted ms-2';
+              dbDetail.textContent = 'Database: ' + component.details.database;
+              const tempDiv2 = document.createElement('div');
+              tempDiv2.appendChild(dbDetail);
+              detailsHtml += '<br>' + tempDiv2.innerHTML;
             }
           });
         } else {
@@ -698,11 +706,16 @@
         errorEl.textContent = 'Error loading health data: ' + (err.message || 'Unknown error');
         errorEl.classList.remove('d-none');
         
-        // Update status to show error
-        document.getElementById('appStatus').textContent = 'ERROR';
-        document.getElementById('appStatus').classList.add('text-danger');
-        document.getElementById('dbStatus').textContent = 'ERROR';
-        document.getElementById('dbStatus').classList.add('text-danger');
+        // Update status to show error - remove existing classes first
+        const appStatusEl = document.getElementById('appStatus');
+        appStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
+        appStatusEl.textContent = 'ERROR';
+        appStatusEl.classList.add('text-danger');
+        
+        const dbStatusEl = document.getElementById('dbStatus');
+        dbStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
+        dbStatusEl.textContent = 'ERROR';
+        dbStatusEl.classList.add('text-danger');
       }
     }
     
