@@ -245,6 +245,52 @@
 
     <!-- Error message -->
     <div id="summaryError" class="alert alert-danger mt-4 d-none" role="alert"></div>
+
+    <hr/>
+    <!-- SYSTEM HEALTH SECTION -->
+    <h3>System Health</h3>
+    <p class="text-muted">Real-time system health metrics including application status and database connectivity.</p>
+    
+    <!-- Health Results -->
+    <div id="healthResults" class="mt-4">
+      <div class="card shadow-sm">
+        <div id="healthCardHeader" class="card-header bg-success text-white">
+          <h5 class="mb-0">System Health Status</h5>
+        </div>
+        <div class="card-body">
+          <!-- Health Stats -->
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <div class="stat-card">
+                <h6 class="text-muted">Application Status</h6>
+                <h3 id="appStatus" class="text-success">Loading...</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stat-card">
+                <h6 class="text-muted">Database Status</h6>
+                <h3 id="dbStatus" class="text-muted">Loading...</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stat-card">
+                <h6 class="text-muted">Last Updated</h6>
+                <p id="healthLastUpdated" class="mb-0 small">-</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Health Details -->
+          <div id="healthDetails" class="alert alert-secondary">
+            <h6 class="alert-heading">Health Details</h6>
+            <div id="healthDetailsText">Loading health data...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health Error message -->
+    <div id="healthError" class="alert alert-danger mt-4 d-none" role="alert"></div>
   </div>
 
   <script>
@@ -549,6 +595,135 @@
 
     // Initial load
     loadUsers();
+    
+    // System Health functionality
+    async function loadHealthData() {
+      try {
+        // Fetch health data from actuator endpoint using the existing authFetch helper
+        const healthData = await authFetch('/actuator/health', { method: 'GET' });
+        
+        // Update overall application status
+        const appStatusEl = document.getElementById('appStatus');
+        const status = healthData.status || 'UNKNOWN';
+        appStatusEl.textContent = status;
+        
+        // Update card header based on overall status
+        const cardHeader = document.getElementById('healthCardHeader');
+        cardHeader.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-secondary');
+        
+        // Set color based on status
+        appStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
+        if (status === 'UP') {
+          appStatusEl.classList.add('text-success');
+          cardHeader.classList.add('bg-success');
+        } else if (status === 'DOWN') {
+          appStatusEl.classList.add('text-danger');
+          cardHeader.classList.add('bg-danger');
+        } else if (status === 'OUT_OF_SERVICE') {
+          appStatusEl.classList.add('text-warning');
+          cardHeader.classList.add('bg-warning');
+        } else {
+          appStatusEl.classList.add('text-muted');
+          cardHeader.classList.add('bg-secondary');
+        }
+        
+        // Update database status
+        const dbStatusEl = document.getElementById('dbStatus');
+        let dbStatus = 'UNKNOWN';
+        let dbStatusClass = 'text-muted';
+        
+        if (healthData.components && healthData.components.db) {
+          dbStatus = healthData.components.db.status || 'UNKNOWN';
+          if (dbStatus === 'UP') {
+            dbStatusClass = 'text-success';
+          } else if (dbStatus === 'DOWN') {
+            dbStatusClass = 'text-danger';
+          } else if (dbStatus === 'OUT_OF_SERVICE') {
+            dbStatusClass = 'text-warning';
+          }
+        }
+        
+        dbStatusEl.textContent = dbStatus;
+        dbStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
+        dbStatusEl.classList.add(dbStatusClass);
+        
+        // Update last updated timestamp
+        const now = new Date();
+        document.getElementById('healthLastUpdated').textContent = now.toLocaleString();
+        
+        // Update health details
+        const healthDetailsEl = document.getElementById('healthDetailsText');
+        let detailsHtml = '<div class="small">';
+        
+        if (healthData.components) {
+          detailsHtml += '<strong>Components:</strong><br>';
+          Object.entries(healthData.components).forEach(([key, component]) => {
+            const componentStatus = component.status || 'UNKNOWN';
+            let badgeClass = 'bg-secondary';
+            if (componentStatus === 'UP') {
+              badgeClass = 'bg-success';
+            } else if (componentStatus === 'DOWN') {
+              badgeClass = 'bg-danger';
+            } else if (componentStatus === 'OUT_OF_SERVICE') {
+              badgeClass = 'bg-warning';
+            }
+            
+            // Create badge element safely using DOM manipulation to prevent XSS
+            const badge = document.createElement('span');
+            badge.className = `badge ${badgeClass} me-2 mb-1`;
+            badge.textContent = `${key}: ${componentStatus}`;
+            
+            // Temporarily append to a container
+            const tempDiv = document.createElement('div');
+            tempDiv.appendChild(badge);
+            detailsHtml += tempDiv.innerHTML;
+            
+            // Show database details if available
+            if (key === 'db' && component.details && component.details.database) {
+              const dbDetail = document.createElement('span');
+              dbDetail.className = 'text-muted ms-2';
+              dbDetail.textContent = 'Database: ' + component.details.database;
+              const tempDiv2 = document.createElement('div');
+              tempDiv2.appendChild(dbDetail);
+              detailsHtml += '<br>' + tempDiv2.innerHTML;
+            }
+          });
+        } else {
+          detailsHtml += '<span class="text-muted">No detailed component information available</span>';
+        }
+        
+        detailsHtml += '</div>';
+        healthDetailsEl.innerHTML = detailsHtml;
+        
+        // Hide error message
+        document.getElementById('healthError').classList.add('d-none');
+        
+      } catch (err) {
+        console.error('Error loading health data:', err);
+        
+        // Show error message
+        const errorEl = document.getElementById('healthError');
+        errorEl.textContent = 'Error loading health data: ' + (err.message || 'Unknown error');
+        errorEl.classList.remove('d-none');
+        
+        // Update status to show error - remove existing classes first
+        const appStatusEl = document.getElementById('appStatus');
+        appStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
+        appStatusEl.textContent = 'ERROR';
+        appStatusEl.classList.add('text-danger');
+        
+        const dbStatusEl = document.getElementById('dbStatus');
+        dbStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
+        dbStatusEl.textContent = 'ERROR';
+        dbStatusEl.classList.add('text-danger');
+      }
+    }
+    
+    // Load health data on page load
+    loadHealthData();
+    
+    // Refresh health data every 30 seconds
+    setInterval(loadHealthData, 30000);
 
     // AI Summary functionality
     document.getElementById('summaryForm').onsubmit = async (e) => {
