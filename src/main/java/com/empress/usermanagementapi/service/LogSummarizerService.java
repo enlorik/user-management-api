@@ -224,14 +224,14 @@ public class LogSummarizerService {
         if (!logLevelStats.isEmpty()) {
             prompt.append("Levels: ");
             logLevelStats.forEach((level, count) -> 
-                prompt.append(level).append(":").append(count).append(" "));
+                prompt.append(level).append(": ").append(count).append(" "));
             prompt.append("\n");
         }
         
         if (!actionTypeStats.isEmpty()) {
             prompt.append("Actions: ");
             actionTypeStats.forEach((action, count) -> 
-                prompt.append(action.replace("USER_", "")).append(":").append(count).append(" "));
+                prompt.append(action.replace("USER_", "")).append(": ").append(count).append(" "));
             prompt.append("\n");
         }
         
