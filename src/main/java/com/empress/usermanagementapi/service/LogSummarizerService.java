@@ -217,47 +217,29 @@ public class LogSummarizerService {
         
         // Build prompt with log statistics
         StringBuilder prompt = new StringBuilder();
-        prompt.append("Analyze the following log data and provide a concise, professional summary:\n\n");
-        prompt.append("Time Period: ").append(timePeriod).append("\n");
-        prompt.append("Total Events: ").append(logEntries.size()).append("\n\n");
+        prompt.append("Provide a brief summary of this log data in 3-4 short sentences:\n\n");
+        prompt.append("Period: ").append(timePeriod).append("\n");
+        prompt.append("Total: ").append(logEntries.size()).append(" events\n\n");
         
         if (!logLevelStats.isEmpty()) {
-            prompt.append("Log Levels:\n");
+            prompt.append("Levels: ");
             logLevelStats.forEach((level, count) -> 
-                prompt.append("- ").append(level).append(": ").append(count).append("\n"));
+                prompt.append(level).append(":").append(count).append(" "));
             prompt.append("\n");
         }
         
         if (!actionTypeStats.isEmpty()) {
-            prompt.append("Action Types:\n");
+            prompt.append("Actions: ");
             actionTypeStats.forEach((action, count) -> 
-                prompt.append("- ").append(action).append(": ").append(count).append("\n"));
+                prompt.append(action.replace("USER_", "")).append(":").append(count).append(" "));
             prompt.append("\n");
         }
         
         if (!topIssues.isEmpty()) {
-            prompt.append("Top Issues:\n");
-            topIssues.forEach(issue -> prompt.append("- ").append(issue).append("\n"));
-            prompt.append("\n");
+            prompt.append("Issues: ").append(String.join(", ", topIssues)).append("\n");
         }
         
-        // Add sample log entries for context (limit to 10 most recent)
-        prompt.append("Sample Log Entries:\n");
-        logEntries.stream()
-                .limit(10)
-                .forEach(entry -> {
-                    prompt.append("- [").append(entry.getLevel()).append("] ");
-                    if (entry.getActionType() != null) {
-                        prompt.append(entry.getActionType()).append(": ");
-                    }
-                    prompt.append(entry.getMessage()).append("\n");
-                });
-        
-        prompt.append("\nProvide a summary that includes:\n");
-        prompt.append("1. Overall system health assessment\n");
-        prompt.append("2. Key patterns or trends\n");
-        prompt.append("3. Critical issues requiring attention\n");
-        prompt.append("4. Actionable recommendations\n");
+        prompt.append("\nBe concise and focus on critical issues only.");
         
         log.debug("Calling OpenAI API with prompt length: {} characters", prompt.length());
         
@@ -271,8 +253,8 @@ public class LogSummarizerService {
             ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
                     .model("gpt-3.5-turbo")
                     .addMessage(userMessage)
-                    .maxTokens(500)
-                    .temperature(0.7)
+                    .maxTokens(200)
+                    .temperature(0.5)
                     .build();
             
             ChatCompletion completion = openAIClient.chat().completions().create(params);
