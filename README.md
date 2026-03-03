@@ -32,6 +32,7 @@ flowchart TD
     Register --> EmailService
 
     Verify --> EmailVerificationService
+    Forgot --> UserService
     Forgot --> PasswordResetService
     Forgot --> EmailService
     Reset --> PasswordResetService
