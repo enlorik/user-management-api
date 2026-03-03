@@ -16,16 +16,16 @@ A streamlined Spring Boot application for managing user accounts with authentica
 
 ```mermaid
 flowchart TD
-    Client[Browser / API Client] --> RateLimit[RateLimitFilter<br>(IP-based throttle)]
-    RateLimit --> Security[SecurityFilterChain<br>Session auth + RBAC]
+    Client["Browser / API Client"] --> RateLimit["RateLimitFilter<br/>IP-based throttle"]
+    RateLimit --> Security["SecurityFilterChain<br/>Session auth + RBAC"]
 
-    Security --> Pages[PageController<br>/login /register /admin /user]
-    Security --> Register[RegistrationController<br>POST /register]
-    Security --> Verify[EmailVerificationController<br>GET /verify-email]
-    Security --> Forgot[ForgotPasswordController<br>GET/POST /forgot-password]
-    Security --> Reset[ResetPasswordController<br>GET/POST /reset-password]
-    Security --> Users[UserController<br>/users + /users/me]
-    Security --> Logs[LogController<br>/api/v1/logs/*]
+    Security --> Pages["PageController<br/>/login /register /admin /user"]
+    Security --> Register["RegistrationController<br/>POST /register"]
+    Security --> Verify["EmailVerificationController<br/>GET /verify-email"]
+    Security --> Forgot["ForgotPasswordController<br/>GET/POST /forgot-password"]
+    Security --> Reset["ResetPasswordController<br/>GET/POST /reset-password"]
+    Security --> Users["UserController<br/>/users + /users/me"]
+    Security --> Logs["LogController<br/>/api/v1/logs/*"]
 
     Register --> UserService
     Register --> EmailVerificationService
@@ -42,7 +42,7 @@ flowchart TD
     Logs --> LogSanitizerService
     Logs --> LogSummarizerService
 
-    LogSummarizerService -.optional.-> OpenAI[OpenAI API]
+    LogSummarizerService -.optional.-> OpenAI["OpenAI API"]
 
     UserService --> UserRepo[(UserRepository)]
     EmailVerificationService --> EmailTokenRepo[(EmailVerificationTokenRepository)]
@@ -54,7 +54,7 @@ flowchart TD
     EmailTokenRepo --> DB
     PasswordTokenRepo --> DB
 
-    TokenCleanup[TokenCleanupService<br>@Scheduled cleanup] --> EmailTokenRepo
+    TokenCleanup["TokenCleanupService<br/>Scheduled cleanup"] --> EmailTokenRepo
     TokenCleanup --> PasswordTokenRepo
 ```
 
