@@ -17,7 +17,7 @@ A streamlined Spring Boot application for managing user accounts with authentica
 ```mermaid
 flowchart TD
     Client[Browser / API Client] --> RateLimit[RateLimitFilter<br>(IP-based throttle)]
-    RateLimit --> Security[SecurityFilterChain<br>Session auth + RBAC]
+    RateLimit --> Security[SecurityFilterChain<br/>Session auth + RBAC]
 
     Security --> Pages[PageController<br>/login /register /admin /user]
     Security --> Register[RegistrationController<br>POST /register]
