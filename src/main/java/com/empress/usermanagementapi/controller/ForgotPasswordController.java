@@ -5,7 +5,8 @@ import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.service.UserService;
 import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.PasswordResetService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -16,6 +17,8 @@ import java.util.Optional;
 @Controller
 public class ForgotPasswordController {
 
+    private static final Logger log = LoggerFactory.getLogger(ForgotPasswordController.class);
+
     private final UserService userService;
     private final EmailService emailService;
     private final PasswordResetService passwordResetService;
@@ -23,7 +26,6 @@ public class ForgotPasswordController {
     @Value("${app.base-url}")
     private String baseUrl;
 
-    @Autowired
     public ForgotPasswordController(UserService userService,
                                     EmailService emailService,
                                     PasswordResetService passwordResetService) {
@@ -72,7 +74,7 @@ public class ForgotPasswordController {
         try {
             emailService.sendPasswordResetEmail(trimmedEmail, resetLink);
         } catch (Exception e) {
-            System.err.println("Failed to send password reset email: " + e.getMessage());
+            log.error("Failed to send password reset email to: {}", trimmedEmail, e);
             model.addAttribute("error", "Failed to send password reset email. Please try again later.");
             return "forgot-password";
         }

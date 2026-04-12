@@ -3,6 +3,8 @@ package com.empress.usermanagementapi.config;
 import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Profile("local")
 public class DevDataLoader {
 
+    private static final Logger log = LoggerFactory.getLogger(DevDataLoader.class);
+
     @Bean
     public CommandLineRunner loadDevData(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
@@ -29,7 +33,7 @@ public class DevDataLoader {
                 admin.setRole(Role.ADMIN);
                 admin.setVerified(true);
                 userRepository.save(admin);
-                System.out.println("✓ Created default admin user for local development");
+                log.info("Created default admin user for local development");
             }
         };
     }
