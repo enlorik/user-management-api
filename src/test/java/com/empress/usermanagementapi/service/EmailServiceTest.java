@@ -22,6 +22,7 @@ import static org.mockito.Mockito.*;
 /**
  * Test class for EmailService with comprehensive logging and retry logic tests.
  */
+@SuppressWarnings({"unchecked", "rawtypes"})
 @ExtendWith(MockitoExtension.class)
 class EmailServiceTest {
 
@@ -299,3 +300,4 @@ class EmailServiceTest {
         verify(httpClient, times(3)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
     }
 }
+                                             
