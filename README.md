@@ -14,49 +14,72 @@ A streamlined Spring Boot application for managing user accounts with authentica
 
 ## Architecture Diagram
 
-```mermaid
-flowchart TD
-    Client[Browser / API Client] --> RateLimit[RateLimitFilter<br/>IP-based throttle]
-    RateLimit --> Security[SecurityFilterChain<br/>Session auth + RBAC]
+## Flow walkthroughs
 
-    Security --> Pages[PageController<br/>/login /register /admin /user]
-    Security --> Register[RegistrationController<br/>POST /register]
-    Security --> Verify[EmailVerificationController<br/>GET /verify-email]
-    Security --> Forgot[ForgotPasswordController<br/>GET/POST /forgot-password]
-    Security --> Reset[ResetPasswordController<br/>GET/POST /reset-password]
-    Security --> Users[UserController<br/>/users + /users/me]
-    Security --> Logs[LogController<br/>/api/v1/logs/*]
+These hand-drawn flow diagrams show the main request paths through the application. Box colors match the architecture layers: orange for security/filtering, blue for user-facing controllers and services, green for repositories and persistence, and purple for log analysis.
 
-    Register --> UserService
-    Register --> EmailVerificationService
-    Register --> EmailService
+<details>
+<summary><strong>Register flow</strong></summary>
 
-    Verify --> EmailVerificationService
-    Forgot --> UserService
-    Forgot --> PasswordResetService
-    Forgot --> EmailService
-    Reset --> PasswordResetService
+<p align="center">
+  <img src="docs/assets/flows/register-flow.png" alt="Register flow" width="900">
+</p>
 
-    Users --> UserService
-    Logs --> LogReaderService
-    Logs --> LogSanitizerService
-    Logs --> LogSummarizerService
+</details>
 
-    LogSummarizerService -.optional.-> OpenAI[OpenAI API]
+<details>
+<summary><strong>Login flow</strong></summary>
 
-    UserService --> UserRepo[(UserRepository)]
-    EmailVerificationService --> EmailTokenRepo[(EmailVerificationTokenRepository)]
-    EmailVerificationService --> UserRepo
-    PasswordResetService --> PasswordTokenRepo[(PasswordResetTokenRepository)]
-    PasswordResetService --> UserRepo
+<p align="center">
+  <img src="docs/assets/flows/login-flow.png" alt="Login flow" width="900">
+</p>
 
-    UserRepo --> DB[(PostgreSQL / H2)]
-    EmailTokenRepo --> DB
-    PasswordTokenRepo --> DB
+</details>
 
-    TokenCleanup[TokenCleanupService<br/>Scheduled cleanup] --> EmailTokenRepo
-    TokenCleanup --> PasswordTokenRepo
-```
+<details>
+<summary><strong>Verify email flow</strong></summary>
+
+<p align="center">
+  <img src="docs/assets/flows/verify-email-flow.png" alt="Verify email flow" width="900">
+</p>
+
+</details>
+
+<details>
+<summary><strong>Forgot password flow</strong></summary>
+
+<p align="center">
+  <img src="docs/assets/flows/forgot-password-flow.png" alt="Forgot password flow" width="900">
+</p>
+
+</details>
+
+<details>
+<summary><strong>Reset password flow</strong></summary>
+
+<p align="center">
+  <img src="docs/assets/flows/reset-password-flow.png" alt="Reset password flow" width="900">
+</p>
+
+</details>
+
+<details>
+<summary><strong>User CRUD flow</strong></summary>
+
+<p align="center">
+  <img src="docs/assets/flows/user-crud-flow.png" alt="User CRUD flow" width="900">
+</p>
+
+</details>
+
+<details>
+<summary><strong>Log summary flow</strong></summary>
+
+<p align="center">
+  <img src="docs/assets/flows/log-summary-flow.png" alt="Log summary flow" width="900">
+</p>
+
+</details>
 
 ### Rate Limiting
 - IP-based rate limiting on critical public endpoints
