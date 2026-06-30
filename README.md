@@ -14,6 +14,10 @@ A streamlined Spring Boot application for managing user accounts with authentica
 
 ## Architecture Diagram
 
+<p align="center">
+  <img src="docs/assets/flows/user-management-api.png" alt="User Management API" width="900">
+</p>
+
 ## Flow walkthroughs
 
 These hand-drawn flow diagrams show the main request paths through the application. Box colors match the architecture layers: orange for security/filtering, blue for user-facing controllers and services, green for repositories and persistence, and purple for log analysis.
