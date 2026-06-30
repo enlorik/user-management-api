@@ -18,68 +18,34 @@ A streamlined Spring Boot application for managing user accounts with authentica
 
 These hand-drawn flow diagrams show the main request paths through the application. Box colors match the architecture layers: orange for security/filtering, blue for user-facing controllers and services, green for repositories and persistence, and purple for log analysis.
 
-<details>
-<summary><strong>Register flow</strong></summary>
-
 <p align="center">
   <img src="docs/assets/flows/register-flow.png" alt="Register flow" width="900">
 </p>
-
-</details>
-
-<details>
-<summary><strong>Login flow</strong></summary>
 
 <p align="center">
   <img src="docs/assets/flows/login-flow.png" alt="Login flow" width="900">
 </p>
 
-</details>
-
-<details>
-<summary><strong>Verify email flow</strong></summary>
-
 <p align="center">
   <img src="docs/assets/flows/verify-email-flow.png" alt="Verify email flow" width="900">
 </p>
 
-</details>
-
-<details>
-<summary><strong>Forgot password flow</strong></summary>
 
 <p align="center">
   <img src="docs/assets/flows/forgot-password-flow.png" alt="Forgot password flow" width="900">
 </p>
 
-</details>
-
-<details>
-<summary><strong>Reset password flow</strong></summary>
-
 <p align="center">
   <img src="docs/assets/flows/reset-password-flow.png" alt="Reset password flow" width="900">
 </p>
-
-</details>
-
-<details>
-<summary><strong>User CRUD flow</strong></summary>
 
 <p align="center">
   <img src="docs/assets/flows/user-crud-flow.png" alt="User CRUD flow" width="900">
 </p>
 
-</details>
-
-<details>
-<summary><strong>Log summary flow</strong></summary>
-
 <p align="center">
   <img src="docs/assets/flows/log-summary-flow.png" alt="Log summary flow" width="900">
 </p>
-
-</details>
 
 ### Rate Limiting
 - IP-based rate limiting on critical public endpoints
