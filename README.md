@@ -10,8 +10,6 @@ A streamlined Spring Boot application for managing user accounts with authentica
 - User profile management (`/users/me`)
 - Optional AI-powered log summarization
 
-## Features Overview
-
 ## Architecture Diagram
 
 <p align="center">
@@ -50,6 +48,8 @@ These hand-drawn flow diagrams show the main request paths through the applicati
 <p align="center">
   <img src="docs/assets/flows/log-summary-flow.png" alt="Log summary flow" width="900">
 </p>
+
+## Features Overview
 
 ### Rate Limiting
 - IP-based rate limiting on critical public endpoints
