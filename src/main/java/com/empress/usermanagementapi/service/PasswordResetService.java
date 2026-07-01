@@ -7,6 +7,7 @@ import com.empress.usermanagementapi.repository.UserRepository;
 import com.empress.usermanagementapi.util.LoggingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -22,13 +23,19 @@ public class PasswordResetService {
     private final PasswordResetTokenRepository tokenRepo;
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     public PasswordResetService(PasswordResetTokenRepository tokenRepo,
                                 UserRepository userRepo,
-                                PasswordEncoder passwordEncoder) {
+                                PasswordEncoder passwordEncoder,
+                                EmailService emailService) {
         this.tokenRepo = tokenRepo;
         this.userRepo = userRepo;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     public PasswordResetToken createPasswordResetTokenForEmail(String email) {
@@ -68,6 +75,18 @@ public class PasswordResetService {
         LoggingUtil.clearActionType();
         LoggingUtil.clearUserId();
         return saved;
+    }
+
+    /**
+     * Creates a password reset token and sends the reset email.
+     *
+     * Callers only need to validate who is allowed to request a reset; this service owns
+     * the token creation and email-delivery workflow.
+     */
+    public void createTokenAndSendResetEmail(String email) {
+        PasswordResetToken tokenEntity = createPasswordResetTokenForEmail(email);
+        String resetLink = baseUrl + "/reset-password?token=" + tokenEntity.getToken();
+        emailService.sendPasswordResetEmail(email, resetLink);
     }
 
     public String validatePasswordResetToken(String token) {
