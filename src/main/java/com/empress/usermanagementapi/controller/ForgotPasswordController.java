@@ -1,13 +1,10 @@
 package com.empress.usermanagementapi.controller;
 
-import com.empress.usermanagementapi.entity.PasswordResetToken;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.service.UserService;
-import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.PasswordResetService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -20,17 +17,11 @@ public class ForgotPasswordController {
     private static final Logger log = LoggerFactory.getLogger(ForgotPasswordController.class);
 
     private final UserService userService;
-    private final EmailService emailService;
     private final PasswordResetService passwordResetService;
 
-    @Value("${app.base-url}")
-    private String baseUrl;
-
     public ForgotPasswordController(UserService userService,
-                                    EmailService emailService,
                                     PasswordResetService passwordResetService) {
         this.userService = userService;
-        this.emailService = emailService;
         this.passwordResetService = passwordResetService;
     }
 
@@ -64,15 +55,8 @@ public class ForgotPasswordController {
             return "forgot-password";
         }
 
-        // User exists, create token + send email
-        PasswordResetToken tokenEntity =
-                passwordResetService.createPasswordResetTokenForEmail(trimmedEmail);
-        String token = tokenEntity.getToken();
-
-        String resetLink = baseUrl + "/reset-password?token=" + token;
-
         try {
-            emailService.sendPasswordResetEmail(trimmedEmail, resetLink);
+            passwordResetService.createTokenAndSendResetEmail(trimmedEmail);
         } catch (Exception e) {
             log.error("Failed to send password reset email to: {}", trimmedEmail, e);
             model.addAttribute("error", "Failed to send password reset email. Please try again later.");
