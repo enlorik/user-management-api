@@ -3,14 +3,12 @@ package com.empress.usermanagementapi.controller;
 import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.model.RegistrationRequest;
-import com.empress.usermanagementapi.service.EmailService;
 import com.empress.usermanagementapi.service.EmailVerificationService;
 import com.empress.usermanagementapi.service.UserService;
 import com.empress.usermanagementapi.util.LoggingUtil;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -37,17 +35,11 @@ public class RegistrationController {
 
     private final UserService userService;
     private final EmailVerificationService emailVerificationService;
-    private final EmailService emailService;
-
-    @Value("${app.base-url}")
-    private String baseUrl;
 
     public RegistrationController(UserService userService,
-                                  EmailVerificationService emailVerificationService,
-                                  EmailService emailService) {
+                                  EmailVerificationService emailVerificationService) {
         this.userService = userService;
         this.emailVerificationService = emailVerificationService;
-        this.emailService = emailService;
     }
 
     /**
@@ -123,22 +115,7 @@ public class RegistrationController {
                     created.getId(), 
                     created.getUsername());
 
-            // create verification token
-            String token = emailVerificationService.createTokenForUser(created);
-            log.debug("Email verification token created - userId: {}", created.getId());
-
-            String verifyLink = baseUrl + "/verify-email?token=" + token;
-
-            try {
-                emailService.sendVerificationEmail(created.getEmail(), verifyLink);
-                log.info("Verification email sent - userId: {}", created.getId());
-            } catch (Exception e) {
-                // for now just log; account is created even if email fails
-                log.error("Failed to send verification email - userId: {}, error: {}", 
-                        created.getId(), 
-                        e.getMessage());
-                System.err.println("Failed to send verification email: " + e.getMessage());
-            }
+            emailVerificationService.createTokenAndSendVerificationEmail(created);
         } else {
             log.warn("User creation returned null or invalid user");
         }
