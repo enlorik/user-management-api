@@ -3,6 +3,7 @@ package com.empress.usermanagementapi.controller;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.service.UserService;
 import com.empress.usermanagementapi.service.PasswordResetService;
+import com.empress.usermanagementapi.util.LoggingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -15,6 +16,8 @@ import java.util.Optional;
 public class ForgotPasswordController {
 
     private static final Logger log = LoggerFactory.getLogger(ForgotPasswordController.class);
+    private static final String RESET_REQUEST_MESSAGE =
+            "If an account with those details exists, a reset link has been sent.";
 
     private final UserService userService;
     private final PasswordResetService passwordResetService;
@@ -46,24 +49,29 @@ public class ForgotPasswordController {
             return "forgot-password";
         }
 
-        // Check username + email combo
         Optional<User> opt = userService.findByUsernameAndEmail(trimmedUsername, trimmedEmail);
 
         if (opt.isEmpty()) {
-            // This is the part you were missing: explicit feedback
-            model.addAttribute("error", "No account found with that username and email.");
+            log.info("Password reset requested for non-matching account - username: {}, email: {}",
+                    trimmedUsername,
+                    LoggingUtil.maskEmail(trimmedEmail));
+            model.addAttribute("success", RESET_REQUEST_MESSAGE);
             return "forgot-password";
         }
 
         try {
             passwordResetService.createTokenAndSendResetEmail(trimmedEmail);
+            log.info("Password reset email sent - username: {}, email: {}",
+                    trimmedUsername,
+                    LoggingUtil.maskEmail(trimmedEmail));
         } catch (Exception e) {
-            log.error("Failed to send password reset email to: {}", trimmedEmail, e);
-            model.addAttribute("error", "Failed to send password reset email. Please try again later.");
-            return "forgot-password";
+            log.error("Failed to send password reset email - username: {}, email: {}",
+                    trimmedUsername,
+                    LoggingUtil.maskEmail(trimmedEmail),
+                    e);
         }
 
-        model.addAttribute("success", "Password reset link has been sent to your email.");
+        model.addAttribute("success", RESET_REQUEST_MESSAGE);
         return "forgot-password";
     }
 }
