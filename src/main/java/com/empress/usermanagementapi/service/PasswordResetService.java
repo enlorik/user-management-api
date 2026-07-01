@@ -81,7 +81,8 @@ public class PasswordResetService {
      * Creates a password reset token and sends the reset email.
      *
      * Callers only need to validate who is allowed to request a reset; this service owns
-     * the token creation and email-delivery workflow.
+     * the token creation and email-delivery workflow. Email delivery failures are allowed
+     * to propagate so the controller can show the user that the reset email was not sent.
      */
     public void createTokenAndSendResetEmail(String email) {
         PasswordResetToken tokenEntity = createPasswordResetTokenForEmail(email);
