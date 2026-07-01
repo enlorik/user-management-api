@@ -7,6 +7,7 @@ import com.empress.usermanagementapi.repository.UserRepository;
 import com.empress.usermanagementapi.util.LoggingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,11 +21,17 @@ public class EmailVerificationService {
 
     private final EmailVerificationTokenRepository tokenRepo;
     private final UserRepository userRepo;
+    private final EmailService emailService;
+
+    @Value("${app.base-url}")
+    private String baseUrl;
 
     public EmailVerificationService(EmailVerificationTokenRepository tokenRepo,
-                                    UserRepository userRepo) {
+                                    UserRepository userRepo,
+                                    EmailService emailService) {
         this.tokenRepo = tokenRepo;
         this.userRepo = userRepo;
+        this.emailService = emailService;
     }
 
     // create or refresh a token for this user and return the token string
@@ -63,6 +70,29 @@ public class EmailVerificationService {
         LoggingUtil.clearActionType();
         LoggingUtil.clearUserId();
         return newTokenValue;
+    }
+
+    /**
+     * Creates a verification token and sends the verification email.
+     *
+     * The account is already created at this point, so email delivery failures are logged
+     * without rolling back registration. This preserves the existing registration behavior
+     * while keeping email orchestration inside the service layer.
+     */
+    public void createTokenAndSendVerificationEmail(User user) {
+        String token = createTokenForUser(user);
+        log.debug("Email verification token created - userId: {}", user.getId());
+
+        String verifyLink = baseUrl + "/verify-email?token=" + token;
+
+        try {
+            emailService.sendVerificationEmail(user.getEmail(), verifyLink);
+            log.info("Verification email sent - userId: {}", user.getId());
+        } catch (Exception e) {
+            log.error("Failed to send verification email - userId: {}, error: {}",
+                    user.getId(),
+                    e.getMessage());
+        }
     }
 
     /**
