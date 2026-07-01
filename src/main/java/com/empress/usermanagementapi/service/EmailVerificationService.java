@@ -92,7 +92,6 @@ public class EmailVerificationService {
             log.error("Failed to send verification email - userId: {}, error: {}",
                     user.getId(),
                     e.getMessage());
-            System.err.println("Failed to send verification email: " + e.getMessage());
         }
     }
 
