@@ -50,16 +50,17 @@ public class RateLimitFilter implements Filter {
         HttpServletResponse response = (HttpServletResponse) servletResponse;
         
         String path = request.getRequestURI();
-        
+        String method = request.getMethod();
+
         // Skip static resources to avoid any potential interference
         if (isStaticResource(path)) {
             logger.debug("Skipping rate limit for static resource: {}", path);
             chain.doFilter(request, response);
             return;
         }
-        
+
         // Only apply rate limiting to specific endpoints
-        if (!shouldRateLimit(path)) {
+        if (!shouldRateLimit(path, method)) {
             chain.doFilter(request, response);
             return;
         }
@@ -125,15 +126,17 @@ public class RateLimitFilter implements Filter {
     }
     
     /**
-     * Determine if the given path should be rate limited.
-     * Uses exact matching for /login and /register,
+     * Determine if the given path and HTTP method should be rate limited.
+     * Uses exact matching for /login, /register, and /forgot-password,
      * and prefix matching for /auth/login and /verify-email to handle query parameters.
+     * Only POST requests to /forgot-password are rate limited; the GET form page is not.
      */
-    private boolean shouldRateLimit(String path) {
-        return path.equals("/login") || 
+    private boolean shouldRateLimit(String path, String method) {
+        return path.equals("/login") ||
                path.startsWith("/auth/login") ||
-               path.equals("/register") || 
-               path.startsWith("/verify-email");
+               path.equals("/register") ||
+               path.startsWith("/verify-email") ||
+               (path.equals("/forgot-password") && "POST".equalsIgnoreCase(method));
     }
     
     /**
@@ -169,6 +172,8 @@ public class RateLimitFilter implements Filter {
             return rateLimitConfig.resolveBucketForRegister(clientIp);
         } else if (path.startsWith("/verify-email")) {
             return rateLimitConfig.resolveBucketForVerifyEmail(clientIp);
+        } else if (path.equals("/forgot-password")) {
+            return rateLimitConfig.resolveBucketForForgotPassword(clientIp);
         }
         return null;
     }

@@ -22,9 +22,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * and provides bucket management with automatic cleanup of expired entries.
  * 
  * Rate limits:
- * - /login: 10 requests per minute
+ * - /login and /auth/login: 10 requests per minute (shared bucket)
  * - /register: 20 requests per 10 minutes
  * - /verify-email: 30 requests per minute
+ * - POST /forgot-password: 5 requests per 15 minutes
  */
 @Component
 @EnableScheduling
@@ -36,11 +37,13 @@ public class RateLimitConfig {
     private final Map<String, Bucket> loginBuckets = new ConcurrentHashMap<>();
     private final Map<String, Bucket> registerBuckets = new ConcurrentHashMap<>();
     private final Map<String, Bucket> verifyEmailBuckets = new ConcurrentHashMap<>();
-    
+    private final Map<String, Bucket> forgotPasswordBuckets = new ConcurrentHashMap<>();
+
     // Timestamps to track last access for cleanup
     private final Map<String, Long> loginLastAccess = new ConcurrentHashMap<>();
     private final Map<String, Long> registerLastAccess = new ConcurrentHashMap<>();
     private final Map<String, Long> verifyEmailLastAccess = new ConcurrentHashMap<>();
+    private final Map<String, Long> forgotPasswordLastAccess = new ConcurrentHashMap<>();
     
     // Cleanup threshold: remove buckets not accessed for 1 hour
     private static final long CLEANUP_THRESHOLD_MS = 60 * 60 * 1000L;
@@ -76,6 +79,15 @@ public class RateLimitConfig {
     }
     
     /**
+     * Get or create a rate limit bucket for the /forgot-password endpoint.
+     * Limit: 5 requests per 15 minutes
+     */
+    public Bucket resolveBucketForForgotPassword(String ip) {
+        forgotPasswordLastAccess.put(ip, System.currentTimeMillis());
+        return forgotPasswordBuckets.computeIfAbsent(ip, key -> createBucketForForgotPassword());
+    }
+
+    /**
      * Create a bucket for /login endpoint.
      * Configuration: 10 tokens, refill 10 tokens per minute
      */
@@ -109,6 +121,17 @@ public class RateLimitConfig {
     }
     
     /**
+     * Create a bucket for /forgot-password endpoint.
+     * Configuration: 5 tokens, refill 5 tokens per 15 minutes
+     */
+    private Bucket createBucketForForgotPassword() {
+        Bandwidth limit = Bandwidth.classic(5, Refill.intervally(5, Duration.ofMinutes(15)));
+        return Bucket.builder()
+                .addLimit(limit)
+                .build();
+    }
+
+    /**
      * Cleanup expired buckets every 30 minutes.
      * Removes buckets that haven't been accessed for more than 1 hour.
      */
@@ -125,7 +148,10 @@ public class RateLimitConfig {
         
         // Cleanup verify-email buckets
         cleaned += cleanupMap(verifyEmailBuckets, verifyEmailLastAccess, now, "verify-email");
-        
+
+        // Cleanup forgot-password buckets
+        cleaned += cleanupMap(forgotPasswordBuckets, forgotPasswordLastAccess, now, "forgot-password");
+
         if (cleaned > 0) {
             logger.info("Cleaned up {} expired rate limit buckets", cleaned);
         }
@@ -171,5 +197,9 @@ public class RateLimitConfig {
     
     public int getVerifyEmailBucketCount() {
         return verifyEmailBuckets.size();
+    }
+
+    public int getForgotPasswordBucketCount() {
+        return forgotPasswordBuckets.size();
     }
 }

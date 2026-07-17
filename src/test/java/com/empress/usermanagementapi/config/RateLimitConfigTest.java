@@ -86,6 +86,48 @@ class RateLimitConfigTest {
     }
     
     /**
+     * Test that forgot-password buckets enforce the correct rate limit (5 per 15 minutes).
+     */
+    @Test
+    void testForgotPasswordBucketRateLimit() {
+        String ip = "192.168.1.4";
+        Bucket bucket = rateLimitConfig.resolveBucketForForgotPassword(ip);
+
+        // Should allow 5 requests
+        for (int i = 0; i < 5; i++) {
+            ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+            assertTrue(probe.isConsumed(), "Request " + (i + 1) + " should be allowed");
+        }
+
+        // 6th request should be rejected
+        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
+        assertFalse(probe.isConsumed(), "6th request should be rejected");
+    }
+
+    /**
+     * Test that different IPs get independent forgot-password buckets.
+     */
+    @Test
+    void testForgotPasswordDifferentIpsGetDifferentBuckets() {
+        String ip1 = "192.168.1.5";
+        String ip2 = "192.168.1.6";
+
+        Bucket bucket1 = rateLimitConfig.resolveBucketForForgotPassword(ip1);
+        Bucket bucket2 = rateLimitConfig.resolveBucketForForgotPassword(ip2);
+
+        assertNotSame(bucket1, bucket2, "Different IPs should have different buckets");
+
+        // Consume all tokens from bucket1
+        for (int i = 0; i < 5; i++) {
+            bucket1.tryConsumeAndReturnRemaining(1);
+        }
+
+        // bucket2 should still have tokens available
+        ConsumptionProbe probe = bucket2.tryConsumeAndReturnRemaining(1);
+        assertTrue(probe.isConsumed(), "bucket2 should still have tokens");
+    }
+
+    /**
      * Test that different IPs get different buckets for the same endpoint.
      */
     @Test
@@ -159,6 +201,24 @@ class RateLimitConfigTest {
     }
     
     /**
+     * Test that the forgot-password bucket count getter tracks new IPs.
+     */
+    @Test
+    void testForgotPasswordBucketCountIncreases() {
+        assertEquals(0, rateLimitConfig.getForgotPasswordBucketCount(), "Initial forgot-password bucket count should be 0");
+
+        rateLimitConfig.resolveBucketForForgotPassword("192.168.1.52");
+        assertEquals(1, rateLimitConfig.getForgotPasswordBucketCount(), "Forgot-password bucket count should be 1");
+
+        rateLimitConfig.resolveBucketForForgotPassword("192.168.1.53");
+        assertEquals(2, rateLimitConfig.getForgotPasswordBucketCount(), "Forgot-password bucket count should be 2");
+
+        // Same IP should not increase count
+        rateLimitConfig.resolveBucketForForgotPassword("192.168.1.52");
+        assertEquals(2, rateLimitConfig.getForgotPasswordBucketCount(), "Forgot-password bucket count should still be 2");
+    }
+
+    /**
      * Test that bucket cleanup works correctly.
      * Note: This test uses reflection to manipulate last access times for testing.
      */
@@ -190,6 +250,33 @@ class RateLimitConfigTest {
         assertEquals(1, rateLimitConfig.getRegisterBucketCount(), "Register bucket should not be affected");
     }
     
+    /**
+     * Test that scheduled cleanup also removes expired forgot-password buckets.
+     */
+    @Test
+    void testForgotPasswordBucketCleanup() throws Exception {
+        rateLimitConfig.resolveBucketForForgotPassword("192.168.1.63");
+        rateLimitConfig.resolveBucketForForgotPassword("192.168.1.64");
+
+        assertEquals(2, rateLimitConfig.getForgotPasswordBucketCount());
+
+        // Use reflection to manipulate last access times to simulate old buckets
+        Field lastAccessField = RateLimitConfig.class.getDeclaredField("forgotPasswordLastAccess");
+        lastAccessField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<String, Long> forgotPasswordLastAccess = (Map<String, Long>) lastAccessField.get(rateLimitConfig);
+
+        // Set one IP's last access to more than 1 hour ago
+        long oneHourAgo = System.currentTimeMillis() - (61 * 60 * 1000);
+        forgotPasswordLastAccess.put("192.168.1.63", oneHourAgo);
+
+        // Run cleanup
+        rateLimitConfig.cleanupExpiredBuckets();
+
+        // Verify that the old bucket was removed
+        assertEquals(1, rateLimitConfig.getForgotPasswordBucketCount(), "Old forgot-password bucket should be cleaned up");
+    }
+
     /**
      * Test that cleanup doesn't remove recently accessed buckets.
      */
