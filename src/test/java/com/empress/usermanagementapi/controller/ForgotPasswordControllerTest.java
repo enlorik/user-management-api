@@ -1,16 +1,13 @@
 package com.empress.usermanagementapi.controller;
 
-import com.empress.usermanagementapi.entity.User;
-import com.empress.usermanagementapi.service.PasswordResetService;
-import com.empress.usermanagementapi.service.UserService;
+import com.empress.usermanagementapi.service.AccountRecoveryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.ui.Model;
-
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -18,8 +15,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class ForgotPasswordControllerTest {
@@ -28,10 +26,7 @@ class ForgotPasswordControllerTest {
             "If an account with those details exists, a reset link has been sent.";
 
     @Mock
-    private UserService userService;
-
-    @Mock
-    private PasswordResetService passwordResetService;
+    private AccountRecoveryService accountRecoveryService;
 
     @Mock
     private Model model;
@@ -40,46 +35,49 @@ class ForgotPasswordControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new ForgotPasswordController(userService, passwordResetService);
+        controller = new ForgotPasswordController(accountRecoveryService);
     }
 
     @Test
-    void handleForm_WhenNoAccountMatches_ReturnsGenericSuccessWithoutSendingEmail() {
-        when(userService.findByUsernameAndEmail("missing", "missing@example.com"))
-                .thenReturn(Optional.empty());
-
-        String view = controller.handleForm(" missing ", " missing@example.com ", model);
+    void handleForm_WhenUsernameBlank_ReturnsValidationError() {
+        String view = controller.handleForm("   ", "user@example.com", model);
 
         assertEquals("forgot-password", view);
-        verify(model).addAttribute("success", GENERIC_MESSAGE);
-        verify(model, never()).addAttribute(eq("error"), any());
-        verify(passwordResetService, never()).createTokenAndSendResetEmail(anyString());
+        verify(model).addAttribute("error", "Username and email are required.");
+        verify(model, never()).addAttribute(eq("success"), any());
+        verify(accountRecoveryService, never()).processResetRequest(anyString(), anyString());
     }
 
     @Test
-    void handleForm_WhenAccountMatches_SendsEmailAndReturnsGenericSuccess() {
-        User user = new User();
-        when(userService.findByUsernameAndEmail("user", "user@example.com"))
-                .thenReturn(Optional.of(user));
+    void handleForm_WhenEmailBlank_ReturnsValidationError() {
+        String view = controller.handleForm("user", "   ", model);
 
+        assertEquals("forgot-password", view);
+        verify(model).addAttribute("error", "Username and email are required.");
+        verify(model, never()).addAttribute(eq("success"), any());
+        verify(accountRecoveryService, never()).processResetRequest(anyString(), anyString());
+    }
+
+    @Test
+    void handleForm_WhenInputValid_DelegatesOnceAndReturnsGenericSuccess() {
         String view = controller.handleForm(" user ", " user@example.com ", model);
 
         assertEquals("forgot-password", view);
-        verify(passwordResetService).createTokenAndSendResetEmail("user@example.com");
+        verify(accountRecoveryService, times(1)).processResetRequest("user", "user@example.com");
+        // The controller must not perform any account lookup itself; its only
+        // collaborator interaction is the single asynchronous submission.
+        verifyNoMoreInteractions(accountRecoveryService);
         verify(model).addAttribute("success", GENERIC_MESSAGE);
         verify(model, never()).addAttribute(eq("error"), any());
     }
 
     @Test
-    void handleForm_WhenEmailDeliveryFails_StillReturnsGenericSuccess() {
-        User user = new User();
-        when(userService.findByUsernameAndEmail("user", "user@example.com"))
-                .thenReturn(Optional.of(user));
-        doThrow(new RuntimeException("email delivery failed"))
-                .when(passwordResetService)
-                .createTokenAndSendResetEmail("user@example.com");
+    void handleForm_WhenSubmissionRejected_StillReturnsGenericSuccess() {
+        doThrow(new TaskRejectedException("executor saturated"))
+                .when(accountRecoveryService)
+                .processResetRequest("user", "user@example.com");
 
-        String view = controller.handleForm(" user ", " user@example.com ", model);
+        String view = controller.handleForm("user", "user@example.com", model);
 
         assertEquals("forgot-password", view);
         verify(model).addAttribute("success", GENERIC_MESSAGE);
