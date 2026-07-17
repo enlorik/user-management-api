@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.empress.usermanagementapi.entity.User;
+import com.empress.usermanagementapi.util.LoggingUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,13 +12,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -118,5 +122,24 @@ class AccountRecoveryServiceTest {
             assertFalse(event.getFormattedMessage().contains(EMAIL),
                     "raw email must not appear in logs: " + event.getFormattedMessage());
         }
+    }
+
+    @Test
+    void processResetRequest_ClearsMdcWhenDeliveryFailsMidway() {
+        when(userService.findByUsernameAndEmail(USERNAME, EMAIL))
+                .thenReturn(Optional.of(new User()));
+        doAnswer(invocation -> {
+            // Simulate a failure after downstream code has populated MDC but
+            // before it could clean up, as when the token save throws.
+            LoggingUtil.setActionType("PASSWORD_RESET_TOKEN_CREATE");
+            LoggingUtil.setUserId(42L);
+            throw new RuntimeException("token save failed");
+        }).when(passwordResetService).createTokenAndSendResetEmail(EMAIL);
+
+        service.processResetRequest(USERNAME, EMAIL);
+
+        Map<String, String> mdc = MDC.getCopyOfContextMap();
+        assertTrue(mdc == null || mdc.isEmpty(),
+                "MDC must be cleared so pooled executor threads do not leak user context, but was: " + mdc);
     }
 }

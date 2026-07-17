@@ -33,25 +33,34 @@ public class AccountRecoveryService {
 
     @Async("accountRecoveryExecutor")
     public void processResetRequest(String username, String email) {
-        Optional<User> opt = userService.findByUsernameAndEmail(username, email);
-
-        if (opt.isEmpty()) {
-            log.info("Password reset requested for non-matching account - username: {}, email: {}",
-                    username,
-                    LoggingUtil.maskEmail(email));
-            return;
-        }
-
+        // This runs on a pooled executor thread, outside the request lifecycle,
+        // so the LoggingInterceptor never clears MDC here. Clear it ourselves or
+        // context set by downstream services (e.g. userId/actionType left behind
+        // when createTokenAndSendResetEmail fails mid-way) would bleed into
+        // whatever task this thread picks up next.
         try {
-            passwordResetService.createTokenAndSendResetEmail(email);
-            log.info("Password reset email sent - username: {}, email: {}",
-                    username,
-                    LoggingUtil.maskEmail(email));
-        } catch (Exception e) {
-            log.error("Failed to send password reset email - username: {}, email: {}",
-                    username,
-                    LoggingUtil.maskEmail(email),
-                    e);
+            Optional<User> opt = userService.findByUsernameAndEmail(username, email);
+
+            if (opt.isEmpty()) {
+                log.info("Password reset requested for non-matching account - username: {}, email: {}",
+                        username,
+                        LoggingUtil.maskEmail(email));
+                return;
+            }
+
+            try {
+                passwordResetService.createTokenAndSendResetEmail(email);
+                log.info("Password reset email sent - username: {}, email: {}",
+                        username,
+                        LoggingUtil.maskEmail(email));
+            } catch (Exception e) {
+                log.error("Failed to send password reset email - username: {}, email: {}",
+                        username,
+                        LoggingUtil.maskEmail(email),
+                        e);
+            }
+        } finally {
+            LoggingUtil.clearMdc();
         }
     }
 }
