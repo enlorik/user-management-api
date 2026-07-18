@@ -73,14 +73,14 @@ class TokenCleanupServiceTest {
 
         // Create expired token
         EmailVerificationToken expiredToken = new EmailVerificationToken();
-        expiredToken.setToken("expired-token");
+        expiredToken.setTokenHash("expired-token");
         expiredToken.setUser(testUser);
         expiredToken.setExpiryDate(LocalDateTime.now().minusDays(1));
         emailVerificationTokenRepository.save(expiredToken);
 
         // Create non-expired token
         EmailVerificationToken validToken = new EmailVerificationToken();
-        validToken.setToken("valid-token");
+        validToken.setTokenHash("valid-token");
         validToken.setUser(validUser);
         validToken.setExpiryDate(LocalDateTime.now().plusDays(1));
         emailVerificationTokenRepository.save(validToken);
@@ -94,8 +94,8 @@ class TokenCleanupServiceTest {
         // Verify only expired token was deleted
         assertEquals(1, deletedCount);
         assertEquals(1, emailVerificationTokenRepository.count());
-        assertTrue(emailVerificationTokenRepository.findByToken("valid-token").isPresent());
-        assertFalse(emailVerificationTokenRepository.findByToken("expired-token").isPresent());
+        assertTrue(emailVerificationTokenRepository.findByTokenHash("valid-token").isPresent());
+        assertFalse(emailVerificationTokenRepository.findByTokenHash("expired-token").isPresent());
     }
 
     @Test
@@ -110,14 +110,14 @@ class TokenCleanupServiceTest {
 
         // Create expired token
         PasswordResetToken expiredToken = new PasswordResetToken();
-        expiredToken.setToken("expired-reset-token");
+        expiredToken.setTokenHash("expired-reset-token");
         expiredToken.setUser(testUser);
         expiredToken.setExpiryDate(LocalDateTime.now().minusDays(1));
         passwordResetTokenRepository.save(expiredToken);
 
         // Create non-expired token
         PasswordResetToken validToken = new PasswordResetToken();
-        validToken.setToken("valid-reset-token");
+        validToken.setTokenHash("valid-reset-token");
         validToken.setUser(validUser);
         validToken.setExpiryDate(LocalDateTime.now().plusDays(1));
         passwordResetTokenRepository.save(validToken);
@@ -131,8 +131,8 @@ class TokenCleanupServiceTest {
         // Verify only expired token was deleted
         assertEquals(1, deletedCount);
         assertEquals(1, passwordResetTokenRepository.count());
-        assertTrue(passwordResetTokenRepository.findByToken("valid-reset-token").isPresent());
-        assertFalse(passwordResetTokenRepository.findByToken("expired-reset-token").isPresent());
+        assertTrue(passwordResetTokenRepository.findByTokenHash("valid-reset-token").isPresent());
+        assertFalse(passwordResetTokenRepository.findByTokenHash("expired-reset-token").isPresent());
     }
 
     @Test
@@ -154,13 +154,13 @@ class TokenCleanupServiceTest {
 
         // Create only non-expired tokens
         EmailVerificationToken emailToken = new EmailVerificationToken();
-        emailToken.setToken("valid-email-token");
+        emailToken.setTokenHash("valid-email-token");
         emailToken.setUser(emailUser);
         emailToken.setExpiryDate(LocalDateTime.now().plusDays(1));
         emailVerificationTokenRepository.save(emailToken);
 
         PasswordResetToken passwordToken = new PasswordResetToken();
-        passwordToken.setToken("valid-password-token");
+        passwordToken.setTokenHash("valid-password-token");
         passwordToken.setUser(passwordUser);
         passwordToken.setExpiryDate(LocalDateTime.now().plusDays(1));
         passwordResetTokenRepository.save(passwordToken);
@@ -209,25 +209,25 @@ class TokenCleanupServiceTest {
 
         // Create a mix of expired and valid tokens
         EmailVerificationToken expiredEmail = new EmailVerificationToken();
-        expiredEmail.setToken("expired-email");
+        expiredEmail.setTokenHash("expired-email");
         expiredEmail.setUser(expiredEmailUser);
         expiredEmail.setExpiryDate(LocalDateTime.now().minusHours(1));
         emailVerificationTokenRepository.save(expiredEmail);
 
         PasswordResetToken expiredPassword = new PasswordResetToken();
-        expiredPassword.setToken("expired-password");
+        expiredPassword.setTokenHash("expired-password");
         expiredPassword.setUser(expiredPasswordUser);
         expiredPassword.setExpiryDate(LocalDateTime.now().minusHours(2));
         passwordResetTokenRepository.save(expiredPassword);
 
         EmailVerificationToken validEmail = new EmailVerificationToken();
-        validEmail.setToken("valid-email");
+        validEmail.setTokenHash("valid-email");
         validEmail.setUser(validEmailUser);
         validEmail.setExpiryDate(LocalDateTime.now().plusHours(1));
         emailVerificationTokenRepository.save(validEmail);
 
         PasswordResetToken validPassword = new PasswordResetToken();
-        validPassword.setToken("valid-password");
+        validPassword.setTokenHash("valid-password");
         validPassword.setUser(validPasswordUser);
         validPassword.setExpiryDate(LocalDateTime.now().plusHours(2));
         passwordResetTokenRepository.save(validPassword);
@@ -238,7 +238,7 @@ class TokenCleanupServiceTest {
         // Verify only valid tokens remain
         assertEquals(1, emailVerificationTokenRepository.count());
         assertEquals(1, passwordResetTokenRepository.count());
-        assertTrue(emailVerificationTokenRepository.findByToken("valid-email").isPresent());
-        assertTrue(passwordResetTokenRepository.findByToken("valid-password").isPresent());
+        assertTrue(emailVerificationTokenRepository.findByTokenHash("valid-email").isPresent());
+        assertTrue(passwordResetTokenRepository.findByTokenHash("valid-password").isPresent());
     }
 }

@@ -5,16 +5,21 @@ import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.repository.EmailVerificationTokenRepository;
 import com.empress.usermanagementapi.repository.UserRepository;
+import com.empress.usermanagementapi.util.TokenHasher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 /**
  * Test class for EmailVerificationService error messages.
@@ -38,6 +43,12 @@ class EmailVerificationServiceTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private TokenHasher tokenHasher;
+
+    @MockBean
+    private EmailService emailService;
 
     private User testUser;
 
@@ -65,7 +76,7 @@ class EmailVerificationServiceTest {
     @Test
     void testVerifyToken_UsedToken_ReturnsUserFriendlyMessage() {
         EmailVerificationToken token = new EmailVerificationToken();
-        token.setToken("used-token");
+        token.setTokenHash(tokenHasher.hash("used-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(true);
@@ -80,7 +91,7 @@ class EmailVerificationServiceTest {
     @Test
     void testVerifyToken_ExpiredToken_ReturnsUserFriendlyMessage() {
         EmailVerificationToken token = new EmailVerificationToken();
-        token.setToken("expired-token");
+        token.setTokenHash(tokenHasher.hash("expired-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().minusDays(1));
         token.setUsed(false);
@@ -95,7 +106,7 @@ class EmailVerificationServiceTest {
     @Test
     void testVerifyToken_ValidToken_ReturnsNull() {
         EmailVerificationToken token = new EmailVerificationToken();
-        token.setToken("valid-token");
+        token.setTokenHash(tokenHasher.hash("valid-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(false);
@@ -110,7 +121,42 @@ class EmailVerificationServiceTest {
         assertTrue(updatedUser.isVerified());
         
         // Verify token is marked as used
-        EmailVerificationToken updatedToken = tokenRepository.findByToken("valid-token").orElseThrow();
+        EmailVerificationToken updatedToken = tokenRepository.findByTokenHash(tokenHasher.hash("valid-token")).orElseThrow();
         assertTrue(updatedToken.isUsed());
+    }
+
+    @Test
+    void testCreateTokenForUser_StoresHashAndReturnsRawToken() {
+        String rawToken = emailVerificationService.createTokenForUser(testUser);
+
+        assertNotNull(rawToken);
+        EmailVerificationToken saved = tokenRepository.findByUser(testUser).orElseThrow();
+        assertEquals(tokenHasher.hash(rawToken), saved.getTokenHash());
+        assertNotEquals(rawToken, saved.getTokenHash());
+    }
+
+    @Test
+    void testCreateTokenAndSendVerificationEmail_EmailLinkContainsRawTokenNotHash() {
+        emailVerificationService.createTokenAndSendVerificationEmail(testUser);
+
+        ArgumentCaptor<String> linkCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendVerificationEmail(eq("test@example.com"), linkCaptor.capture());
+
+        String verifyLink = linkCaptor.getValue();
+        String rawToken = verifyLink.substring(verifyLink.indexOf("token=") + "token=".length());
+        EmailVerificationToken saved = tokenRepository.findByUser(testUser).orElseThrow();
+        assertEquals(tokenHasher.hash(rawToken), saved.getTokenHash());
+        assertFalse(verifyLink.contains(saved.getTokenHash()));
+    }
+
+    @Test
+    void testVerifyToken_RawTokenIssuedByService_IsHashedForLookup() {
+        String rawToken = emailVerificationService.createTokenForUser(testUser);
+
+        String error = emailVerificationService.verifyToken(rawToken);
+
+        assertNull(error);
+        User updatedUser = userRepository.findById(testUser.getId()).orElseThrow();
+        assertTrue(updatedUser.isVerified());
     }
 }

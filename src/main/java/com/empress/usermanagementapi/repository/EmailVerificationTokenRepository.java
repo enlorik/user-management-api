@@ -14,7 +14,7 @@ import java.util.Optional;
 public interface EmailVerificationTokenRepository
         extends JpaRepository<EmailVerificationToken, Long> {
 
-    Optional<EmailVerificationToken> findByToken(String token);
+    Optional<EmailVerificationToken> findByTokenHash(String tokenHash);
 
     Optional<EmailVerificationToken> findByUser(User user);
 

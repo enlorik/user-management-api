@@ -8,8 +8,8 @@ public class PasswordResetToken extends BaseTokenEntity {
 
     public PasswordResetToken() {}
 
-    public PasswordResetToken(String token, User user, LocalDateTime expiryDate) {
-        this.setToken(token);
+    public PasswordResetToken(String tokenHash, User user, LocalDateTime expiryDate) {
+        this.setTokenHash(tokenHash);
         this.setUser(user);
         this.setExpiryDate(expiryDate);
         this.setUsed(false);

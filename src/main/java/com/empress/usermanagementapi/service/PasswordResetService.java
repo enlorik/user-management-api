@@ -5,6 +5,7 @@ import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.repository.PasswordResetTokenRepository;
 import com.empress.usermanagementapi.repository.UserRepository;
 import com.empress.usermanagementapi.util.LoggingUtil;
+import com.empress.usermanagementapi.util.TokenHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +25,7 @@ public class PasswordResetService {
     private final UserRepository userRepo;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final TokenHasher tokenHasher;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -31,14 +33,25 @@ public class PasswordResetService {
     public PasswordResetService(PasswordResetTokenRepository tokenRepo,
                                 UserRepository userRepo,
                                 PasswordEncoder passwordEncoder,
-                                EmailService emailService) {
+                                EmailService emailService,
+                                TokenHasher tokenHasher) {
         this.tokenRepo = tokenRepo;
         this.userRepo = userRepo;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.tokenHasher = tokenHasher;
     }
 
-    public PasswordResetToken createPasswordResetTokenForEmail(String email) {
+    /**
+     * Issues a password reset token for the given email.
+     *
+     * Only the SHA-256 hash of the token is persisted; the returned raw token
+     * exists solely so the caller can place it in the reset link, and is never
+     * stored or logged.
+     *
+     * @return the raw reset token to embed in the emailed link
+     */
+    public String createPasswordResetTokenForEmail(String email) {
         LoggingUtil.setActionType("PASSWORD_RESET_TOKEN_CREATE");
         log.info("Password reset token request - email: {}", LoggingUtil.maskEmail(email));
         
@@ -54,7 +67,7 @@ public class PasswordResetService {
         log.info("Creating password reset token - userId: {}, username: {}", 
                 user.getId(), user.getUsername());
         
-        String token = UUID.randomUUID().toString();
+        String rawToken = UUID.randomUUID().toString();
         LocalDateTime expiry = LocalDateTime.now().plusHours(TOKEN_EXPIRY_HOURS);
 
         // Reuse existing row for this user if it exists, otherwise create a new one
@@ -66,15 +79,15 @@ public class PasswordResetService {
                 return t;
             });
 
-        prt.setToken(token);
+        prt.setTokenHash(tokenHasher.hash(rawToken));
         prt.setExpiryDate(expiry);
         prt.setUsed(false);
 
-        PasswordResetToken saved = tokenRepo.save(prt);
+        tokenRepo.save(prt);
         log.info("Password reset token created successfully - userId: {}", user.getId());
         LoggingUtil.clearActionType();
         LoggingUtil.clearUserId();
-        return saved;
+        return rawToken;
     }
 
     /**
@@ -85,8 +98,8 @@ public class PasswordResetService {
      * to propagate so the controller can show the user that the reset email was not sent.
      */
     public void createTokenAndSendResetEmail(String email) {
-        PasswordResetToken tokenEntity = createPasswordResetTokenForEmail(email);
-        String resetLink = baseUrl + "/reset-password?token=" + tokenEntity.getToken();
+        String rawToken = createPasswordResetTokenForEmail(email);
+        String resetLink = baseUrl + "/reset-password?token=" + rawToken;
         emailService.sendPasswordResetEmail(email, resetLink);
     }
 
@@ -97,7 +110,7 @@ public class PasswordResetService {
             return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
-        var opt = tokenRepo.findByToken(cleanToken);
+        var opt = tokenRepo.findByTokenHash(tokenHasher.hash(cleanToken));
 
         if (opt.isEmpty()) {
             return "The reset password token is invalid. Ensure you copied the entire link.";
@@ -130,7 +143,7 @@ public class PasswordResetService {
             return "The reset password token is invalid. Ensure you copied the entire link.";
         }
 
-        var opt = tokenRepo.findByToken(cleanToken);
+        var opt = tokenRepo.findByTokenHash(tokenHasher.hash(cleanToken));
 
         if (opt.isEmpty()) {
             log.warn("Password reset failed - token not found");
