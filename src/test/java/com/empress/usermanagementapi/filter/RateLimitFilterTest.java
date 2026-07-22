@@ -202,6 +202,60 @@ class RateLimitFilterTest {
     }
     
     /**
+     * Test that POST /forgot-password has correct rate limit (5 per 15 minutes)
+     * and the 6th request receives HTTP 429 with a Retry-After header.
+     */
+    @Test
+    void testForgotPasswordPostRateLimit() throws Exception {
+        // Setup
+        when(request.getRequestURI()).thenReturn("/forgot-password");
+        when(request.getMethod()).thenReturn("POST");
+        when(request.getRemoteAddr()).thenReturn("192.168.1.60");
+        when(response.getWriter()).thenReturn(new PrintWriter(responseWriter));
+
+        // Execute: Make 5 requests (the limit for POST /forgot-password is 5 per 15 minutes)
+        for (int i = 0; i < 5; i++) {
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+
+        // Verify: All 5 requests should pass through
+        verify(filterChain, times(5)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+
+        // Execute: Make 1 more request (exceeds the limit)
+        rateLimitFilter.doFilter(request, response, filterChain);
+
+        // Verify: 6th request should be rejected with Retry-After
+        verify(filterChain, times(5)).doFilter(request, response); // Still 5
+        verify(response, times(1)).setStatus(429);
+        verify(response, times(1)).setHeader(eq("Retry-After"), anyString());
+
+        // Verify response content
+        String responseContent = responseWriter.toString();
+        assertTrue(responseContent.contains("Rate limit exceeded"));
+        assertTrue(responseContent.contains("retryAfter"));
+    }
+
+    /**
+     * Test that GET /forgot-password (the form page) bypasses rate limiting.
+     */
+    @Test
+    void testForgotPasswordGetBypassesRateLimit() throws Exception {
+        // Setup
+        when(request.getRequestURI()).thenReturn("/forgot-password");
+        when(request.getMethod()).thenReturn("GET");
+
+        // Execute: Make many GET requests, far beyond the POST limit
+        for (int i = 0; i < 50; i++) {
+            rateLimitFilter.doFilter(request, response, filterChain);
+        }
+
+        // Verify: All requests should pass through without rate limiting
+        verify(filterChain, times(50)).doFilter(request, response);
+        verify(response, never()).setStatus(429);
+    }
+
+    /**
      * Test that X-Forwarded-For header is used when available.
      */
     @Test
