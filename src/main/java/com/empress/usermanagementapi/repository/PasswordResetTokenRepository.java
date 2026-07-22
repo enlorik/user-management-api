@@ -13,7 +13,7 @@ import java.util.Optional;
 
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
 
-    Optional<PasswordResetToken> findByToken(String token);
+    Optional<PasswordResetToken> findByTokenHash(String tokenHash);
 
     // new: so we can overwrite the same row for the same user
     Optional<PasswordResetToken> findByUser(User user);

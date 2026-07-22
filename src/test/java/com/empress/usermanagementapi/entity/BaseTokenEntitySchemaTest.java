@@ -50,7 +50,7 @@ class BaseTokenEntitySchemaTest {
 
         // Create and save email verification token
         EmailVerificationToken token = new EmailVerificationToken();
-        token.setToken("test-token-123");
+        token.setTokenHash("test-token-123");
         token.setUser(user);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(false);
@@ -59,7 +59,7 @@ class BaseTokenEntitySchemaTest {
 
         // Verify all inherited fields are properly persisted
         assertNotNull(saved.getId());
-        assertEquals("test-token-123", saved.getToken());
+        assertEquals("test-token-123", saved.getTokenHash());
         assertEquals(user.getId(), saved.getUser().getId());
         assertNotNull(saved.getExpiryDate());
         assertFalse(saved.isUsed());
@@ -67,7 +67,7 @@ class BaseTokenEntitySchemaTest {
         // Verify the token can be retrieved
         EmailVerificationToken retrieved = emailTokenRepository.findById(saved.getId()).orElse(null);
         assertNotNull(retrieved);
-        assertEquals(saved.getToken(), retrieved.getToken());
+        assertEquals(saved.getTokenHash(), retrieved.getTokenHash());
     }
 
     @Test
@@ -88,7 +88,7 @@ class BaseTokenEntitySchemaTest {
 
         // Verify all inherited fields are properly persisted
         assertNotNull(saved.getId());
-        assertEquals("reset-token-456", saved.getToken());
+        assertEquals("reset-token-456", saved.getTokenHash());
         assertEquals(user.getId(), saved.getUser().getId());
         assertNotNull(saved.getExpiryDate());
         assertFalse(saved.isUsed());
@@ -96,7 +96,7 @@ class BaseTokenEntitySchemaTest {
         // Verify the token can be retrieved
         PasswordResetToken retrieved = passwordTokenRepository.findById(saved.getId()).orElse(null);
         assertNotNull(retrieved);
-        assertEquals(saved.getToken(), retrieved.getToken());
+        assertEquals(saved.getTokenHash(), retrieved.getTokenHash());
     }
 
     @Test
@@ -111,7 +111,7 @@ class BaseTokenEntitySchemaTest {
 
         // Create and save token
         EmailVerificationToken token = new EmailVerificationToken();
-        token.setToken("original-token");
+        token.setTokenHash("original-token");
         token.setUser(user);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(false);
@@ -120,14 +120,14 @@ class BaseTokenEntitySchemaTest {
         Long tokenId = saved.getId();
 
         // Update the token
-        saved.setToken("updated-token");
+        saved.setTokenHash("updated-token");
         saved.setUsed(true);
         emailTokenRepository.save(saved);
 
         // Verify update worked
         EmailVerificationToken updated = emailTokenRepository.findById(tokenId).orElse(null);
         assertNotNull(updated);
-        assertEquals("updated-token", updated.getToken());
+        assertEquals("updated-token", updated.getTokenHash());
         assertTrue(updated.isUsed());
     }
 
@@ -150,7 +150,7 @@ class BaseTokenEntitySchemaTest {
 
         // Create tokens for both users
         EmailVerificationToken token1 = new EmailVerificationToken();
-        token1.setToken("token-user1");
+        token1.setTokenHash("token-user1");
         token1.setUser(user1);
         token1.setExpiryDate(LocalDateTime.now().plusDays(1));
         emailTokenRepository.save(token1);
@@ -162,11 +162,11 @@ class BaseTokenEntitySchemaTest {
         assertEquals(1, emailTokenRepository.count());
         assertEquals(1, passwordTokenRepository.count());
         
-        EmailVerificationToken retrievedEmail = emailTokenRepository.findByToken("token-user1").orElse(null);
+        EmailVerificationToken retrievedEmail = emailTokenRepository.findByTokenHash("token-user1").orElse(null);
         assertNotNull(retrievedEmail);
         assertEquals(user1.getId(), retrievedEmail.getUser().getId());
 
-        PasswordResetToken retrievedPassword = passwordTokenRepository.findByToken("token-user2").orElse(null);
+        PasswordResetToken retrievedPassword = passwordTokenRepository.findByTokenHash("token-user2").orElse(null);
         assertNotNull(retrievedPassword);
         assertEquals(user2.getId(), retrievedPassword.getUser().getId());
     }

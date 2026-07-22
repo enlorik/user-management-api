@@ -10,8 +10,10 @@ public abstract class BaseTokenEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String token;
+    // The Java property is the SHA-256 hash of the issued token; the column keeps
+    // its historical "token" name so the database schema stays compatible.
+    @Column(name = "token", nullable = false, unique = true)
+    private String tokenHash;
 
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(nullable = false, name = "user_id")
@@ -27,12 +29,12 @@ public abstract class BaseTokenEntity {
         return id;
     }
 
-    public String getToken() {
-        return token;
+    public String getTokenHash() {
+        return tokenHash;
     }
 
-    public void setToken(String token) {
-        this.token = token;
+    public void setTokenHash(String tokenHash) {
+        this.tokenHash = tokenHash;
     }
 
     public User getUser() {

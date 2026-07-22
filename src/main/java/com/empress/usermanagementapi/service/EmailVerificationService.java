@@ -5,6 +5,7 @@ import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.repository.EmailVerificationTokenRepository;
 import com.empress.usermanagementapi.repository.UserRepository;
 import com.empress.usermanagementapi.util.LoggingUtil;
+import com.empress.usermanagementapi.util.TokenHasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,19 +23,23 @@ public class EmailVerificationService {
     private final EmailVerificationTokenRepository tokenRepo;
     private final UserRepository userRepo;
     private final EmailService emailService;
+    private final TokenHasher tokenHasher;
 
     @Value("${app.base-url}")
     private String baseUrl;
 
     public EmailVerificationService(EmailVerificationTokenRepository tokenRepo,
                                     UserRepository userRepo,
-                                    EmailService emailService) {
+                                    EmailService emailService,
+                                    TokenHasher tokenHasher) {
         this.tokenRepo = tokenRepo;
         this.userRepo = userRepo;
         this.emailService = emailService;
+        this.tokenHasher = tokenHasher;
     }
 
-    // create or refresh a token for this user and return the token string
+    // create or refresh a token for this user and return the raw token string;
+    // only its SHA-256 hash is persisted
     public String createTokenForUser(User user) {
         LoggingUtil.setActionType("EMAIL_VERIFICATION_TOKEN_CREATE");
         LoggingUtil.setUserId(user.getId());
@@ -45,11 +50,12 @@ public class EmailVerificationService {
                 tokenRepo.findByUser(user).orElse(null);
 
         String newTokenValue = UUID.randomUUID().toString();
+        String tokenHash = tokenHasher.hash(newTokenValue);
         LocalDateTime expiry = LocalDateTime.now().plusHours(TOKEN_EXPIRY_HOURS);
 
         if (existing != null) {
             log.debug("Refreshing existing email verification token - userId: {}", user.getId());
-            existing.setToken(newTokenValue);
+            existing.setTokenHash(tokenHash);
             existing.setExpiryDate(expiry);
             existing.setUsed(false);
             tokenRepo.save(existing);
@@ -61,7 +67,7 @@ public class EmailVerificationService {
         log.debug("Creating new email verification token - userId: {}", user.getId());
         EmailVerificationToken token = new EmailVerificationToken();
         token.setUser(user);
-        token.setToken(newTokenValue);
+        token.setTokenHash(tokenHash);
         token.setExpiryDate(expiry);
         token.setUsed(false);
 
@@ -103,7 +109,14 @@ public class EmailVerificationService {
         log.info("Email verification attempt - tokenLength: {}", 
                 tokenValue != null ? tokenValue.length() : 0);
         
-        var opt = tokenRepo.findByToken(tokenValue);
+        if (tokenValue == null || tokenValue.isEmpty()) {
+            log.warn("Email verification failed - invalid token");
+            LoggingUtil.clearActionType();
+            LoggingUtil.clearUserId();
+            return "The provided verification link is invalid. Please check the link or request a new one.";
+        }
+
+        var opt = tokenRepo.findByTokenHash(tokenHasher.hash(tokenValue));
         if (opt.isEmpty()) {
             log.warn("Email verification failed - invalid token");
             LoggingUtil.clearActionType();

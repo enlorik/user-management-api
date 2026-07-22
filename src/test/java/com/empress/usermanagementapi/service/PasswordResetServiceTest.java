@@ -5,10 +5,13 @@ import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
 import com.empress.usermanagementapi.repository.PasswordResetTokenRepository;
 import com.empress.usermanagementapi.repository.UserRepository;
+import com.empress.usermanagementapi.util.TokenHasher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 
 /**
  * Test class for PasswordResetService error messages.
@@ -42,6 +47,12 @@ class PasswordResetServiceTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private TokenHasher tokenHasher;
+
+    @MockBean
+    private EmailService emailService;
 
     private User testUser;
 
@@ -85,7 +96,7 @@ class PasswordResetServiceTest {
     @Test
     void testValidatePasswordResetToken_UsedToken_ReturnsUserFriendlyMessage() {
         PasswordResetToken token = new PasswordResetToken();
-        token.setToken("used-token");
+        token.setTokenHash(tokenHasher.hash("used-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(true);
@@ -100,7 +111,7 @@ class PasswordResetServiceTest {
     @Test
     void testValidatePasswordResetToken_ExpiredToken_ReturnsUserFriendlyMessage() {
         PasswordResetToken token = new PasswordResetToken();
-        token.setToken("expired-token");
+        token.setTokenHash(tokenHasher.hash("expired-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().minusDays(1));
         token.setUsed(false);
@@ -115,7 +126,7 @@ class PasswordResetServiceTest {
     @Test
     void testValidatePasswordResetToken_ValidToken_ReturnsNull() {
         PasswordResetToken token = new PasswordResetToken();
-        token.setToken("valid-token");
+        token.setTokenHash(tokenHasher.hash("valid-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(false);
@@ -153,7 +164,7 @@ class PasswordResetServiceTest {
     @Test
     void testResetPassword_UsedToken_ReturnsUserFriendlyMessage() {
         PasswordResetToken token = new PasswordResetToken();
-        token.setToken("used-token");
+        token.setTokenHash(tokenHasher.hash("used-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(true);
@@ -168,7 +179,7 @@ class PasswordResetServiceTest {
     @Test
     void testResetPassword_ExpiredToken_ReturnsUserFriendlyMessage() {
         PasswordResetToken token = new PasswordResetToken();
-        token.setToken("expired-token");
+        token.setTokenHash(tokenHasher.hash("expired-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().minusDays(1));
         token.setUsed(false);
@@ -183,7 +194,7 @@ class PasswordResetServiceTest {
     @Test
     void testResetPassword_ValidToken_ReturnsNullAndUpdatesPassword() {
         PasswordResetToken token = new PasswordResetToken();
-        token.setToken("valid-token");
+        token.setTokenHash(tokenHasher.hash("valid-token"));
         token.setUser(testUser);
         token.setExpiryDate(LocalDateTime.now().plusDays(1));
         token.setUsed(false);
@@ -198,7 +209,51 @@ class PasswordResetServiceTest {
         assertTrue(passwordEncoder.matches("newpassword", updatedUser.getPassword()));
         
         // Verify token is marked as used
-        PasswordResetToken updatedToken = tokenRepository.findByToken("valid-token").orElseThrow();
+        PasswordResetToken updatedToken = tokenRepository.findByTokenHash(tokenHasher.hash("valid-token")).orElseThrow();
         assertTrue(updatedToken.isUsed());
+    }
+
+    @Test
+    void testCreatePasswordResetTokenForEmail_StoresHashAndReturnsRawToken() {
+        String rawToken = passwordResetService.createPasswordResetTokenForEmail("test@example.com");
+
+        assertNotNull(rawToken);
+        PasswordResetToken saved = tokenRepository.findByUser(testUser).orElseThrow();
+        assertEquals(tokenHasher.hash(rawToken), saved.getTokenHash());
+        assertNotEquals(rawToken, saved.getTokenHash());
+    }
+
+    @Test
+    void testCreateTokenAndSendResetEmail_EmailLinkContainsRawTokenNotHash() {
+        passwordResetService.createTokenAndSendResetEmail("test@example.com");
+
+        ArgumentCaptor<String> linkCaptor = ArgumentCaptor.forClass(String.class);
+        verify(emailService).sendPasswordResetEmail(eq("test@example.com"), linkCaptor.capture());
+
+        String resetLink = linkCaptor.getValue();
+        String rawToken = resetLink.substring(resetLink.indexOf("token=") + "token=".length());
+        PasswordResetToken saved = tokenRepository.findByUser(testUser).orElseThrow();
+        assertEquals(tokenHasher.hash(rawToken), saved.getTokenHash());
+        assertFalse(resetLink.contains(saved.getTokenHash()));
+    }
+
+    @Test
+    void testValidatePasswordResetToken_RawTokenIssuedByService_IsAccepted() {
+        String rawToken = passwordResetService.createPasswordResetTokenForEmail("test@example.com");
+
+        assertNull(passwordResetService.validatePasswordResetToken(rawToken));
+    }
+
+    @Test
+    void testResetPassword_RawTokenIssuedByService_IsHashedForLookup() {
+        String rawToken = passwordResetService.createPasswordResetTokenForEmail("test@example.com");
+
+        String error = passwordResetService.resetPassword(rawToken, "brand-new-password");
+
+        assertNull(error);
+        User updatedUser = userRepository.findById(testUser.getId()).orElseThrow();
+        assertTrue(passwordEncoder.matches("brand-new-password", updatedUser.getPassword()));
+        PasswordResetToken saved = tokenRepository.findByTokenHash(tokenHasher.hash(rawToken)).orElseThrow();
+        assertTrue(saved.isUsed());
     }
 }
