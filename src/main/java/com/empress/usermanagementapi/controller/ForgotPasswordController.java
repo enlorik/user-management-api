@@ -1,16 +1,12 @@
 package com.empress.usermanagementapi.controller;
 
-import com.empress.usermanagementapi.entity.User;
-import com.empress.usermanagementapi.service.UserService;
-import com.empress.usermanagementapi.service.PasswordResetService;
+import com.empress.usermanagementapi.service.AccountRecoveryService;
 import com.empress.usermanagementapi.util.LoggingUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Optional;
 
 @Controller
 public class ForgotPasswordController {
@@ -19,13 +15,10 @@ public class ForgotPasswordController {
     private static final String RESET_REQUEST_MESSAGE =
             "If an account with those details exists, a reset link has been sent.";
 
-    private final UserService userService;
-    private final PasswordResetService passwordResetService;
+    private final AccountRecoveryService accountRecoveryService;
 
-    public ForgotPasswordController(UserService userService,
-                                    PasswordResetService passwordResetService) {
-        this.userService = userService;
-        this.passwordResetService = passwordResetService;
+    public ForgotPasswordController(AccountRecoveryService accountRecoveryService) {
+        this.accountRecoveryService = accountRecoveryService;
     }
 
     @GetMapping("/forgot-password")
@@ -49,23 +42,13 @@ public class ForgotPasswordController {
             return "forgot-password";
         }
 
-        Optional<User> opt = userService.findByUsernameAndEmail(trimmedUsername, trimmedEmail);
-
-        if (opt.isEmpty()) {
-            log.info("Password reset requested for non-matching account - username: {}, email: {}",
-                    trimmedUsername,
-                    LoggingUtil.maskEmail(trimmedEmail));
-            model.addAttribute("success", RESET_REQUEST_MESSAGE);
-            return "forgot-password";
-        }
-
+        // All account-dependent work happens asynchronously so the response
+        // time does not reveal whether the account exists. A rejected
+        // submission (executor saturated) must not change the public reply.
         try {
-            passwordResetService.createTokenAndSendResetEmail(trimmedEmail);
-            log.info("Password reset email sent - username: {}, email: {}",
-                    trimmedUsername,
-                    LoggingUtil.maskEmail(trimmedEmail));
+            accountRecoveryService.processResetRequest(trimmedUsername, trimmedEmail);
         } catch (Exception e) {
-            log.error("Failed to send password reset email - username: {}, email: {}",
+            log.error("Failed to submit account recovery request - username: {}, email: {}",
                     trimmedUsername,
                     LoggingUtil.maskEmail(trimmedEmail),
                     e);
