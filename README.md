@@ -120,3 +120,13 @@ docker run -d -p 8080:8080
 License
 
 For educational and demonstration purposes.
+
+## Design notes
+
+**Why SHA-256 for tokens but BCrypt for passwords** — Password reset and email verification tokens need to be looked up by value: the raw token comes back in a URL, and the server needs to find the matching database row. BCrypt salts every hash, making two hashes of the same input always different — lookup by value is impossible. SHA-256 is deterministic, which makes the lookup work. It's safe here because the input is a random UUID, not a guessable string; nobody brute-forces a UUID the way they'd brute-force "password123". Passwords still use BCrypt, because they're low-entropy and are always verified by comparison, never fetched by value.
+
+**Why sessions over JWT** — This is a browser-facing app with server-rendered pages, so a cookie pointing to a server-side session fits naturally. The main upside is instant revocability: deleting the session row logs the user out immediately, with no need to wait for a token to expire. The natural comparison is doc-flow, which uses JWT — that's a machine-facing API where horizontal scale and statelessness matter more than immediate revocation.
+
+**Why the rate limiter is a servlet filter at @Order(1)** — The filter runs before Spring Security, before any controller code, before any database access. Rejecting an abusive IP at that layer costs almost nothing. For public endpoints like `/login` and `/forgot-password`, that's the right trade-off.
+
+**Known limits** — Sessions and rate-limit buckets are both in-memory, so a second app instance breaks session stickiness and doubles the effective rate limit. Spring Session backed by Redis handles the first; a distributed Bucket4j backend handles the second. Email is SMTP fire-and-forget with no retry queue; an outbox table and worker would make delivery reliable.
