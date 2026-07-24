@@ -120,3 +120,13 @@ docker run -d -p 8080:8080
 License
 
 For educational and demonstration purposes.
+
+## Design notes
+
+**Why SHA-256 for tokens but BCrypt for passwords** — Password reset and email verification tokens need to be looked up by value: the raw token comes back in a URL, and the server needs to find the matching database row. BCrypt salts every hash, making two hashes of the same input always different — lookup by value is impossible. SHA-256 is deterministic, which makes the lookup work. It's safe here because the input is a random UUID, not a guessable string; nobody brute-forces a UUID the way they'd brute-force "password123". Passwords still use BCrypt, because they're low-entropy and are always verified by comparison, never fetched by value.
+
+**Why sessions over JWT** — This is a browser-facing app with server-rendered pages, so a cookie pointing to a server-side session fits naturally. The main upside is instant revocability: deleting the session row logs the user out immediately, with no need to wait for a token to expire. JWT works well for machine-facing APIs where statelessness and horizontal scale matter more, but for a browser-facing app with server-rendered pages, sessions are the simpler and more revocable choice.
+
+**Why the rate limiter is a servlet filter** — The filter rejects abusive IPs before requests reach controller code or the repository layer. One important caveat: Spring Boot's Spring Security filter defaults to order −100, meaning it runs before `@Order(1)` filters. For endpoints Spring Security intercepts directly (such as form-login `POST /login`), Security processes the request first — so the rate limiter does not protect the authentication layer itself. It guards the application layer downstream of Security.
+
+**Known limits** — Sessions and rate-limit buckets are both in-memory, so a second app instance breaks session stickiness and doubles the effective rate limit. Spring Session backed by Redis handles the first; a distributed Bucket4j backend handles the second. Email is sent via the Resend API with configurable retries (default 3 attempts), so transient failures are handled — the remaining gap is a durable outbox: if the process crashes mid-send, no retry happens.
