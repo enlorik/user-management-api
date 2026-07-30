@@ -2,6 +2,7 @@ package com.empress.usermanagementapi.dto;
 
 import com.empress.usermanagementapi.entity.Role;
 import com.empress.usermanagementapi.entity.User;
+import com.empress.usermanagementapi.util.LoggingUtil;
 
 /**
  * Data Transfer Object for User responses in REST API.
@@ -19,9 +20,6 @@ public class UserResponse {
     public UserResponse() {
     }
 
-    /**
-     * Create a UserResponse from a User entity.
-     */
     public static UserResponse fromEntity(User user) {
         UserResponse response = new UserResponse();
         response.setId(user.getId());
@@ -29,6 +27,12 @@ public class UserResponse {
         response.setEmail(user.getEmail());
         response.setRole(user.getRole());
         response.setVerified(user.isVerified());
+        return response;
+    }
+
+    public static UserResponse fromEntityMasked(User user) {
+        UserResponse response = fromEntity(user);
+        response.setEmail(LoggingUtil.maskEmail(user.getEmail()));
         return response;
     }
 

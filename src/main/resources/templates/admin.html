@@ -297,6 +297,7 @@
     const API = '';
     let editingUserId   = null;   // when set, the Create button acts as Update
     let editingUserName = null;   // for heading text
+    let pendingEditId   = null;   // guards against stale out-of-order fetch responses
 
     async function authFetch(path, opts = {}) {
       opts.credentials = 'include';
@@ -376,7 +377,10 @@
           tr.innerHTML = `
             <td>${u.id}</td>
             <td class="user-username cell-like" data-id="${u.id}">${u.username}</td>
-            <td class="user-email cell-like" data-id="${u.id}">${u.email}</td>
+            <td class="user-email cell-like" data-id="${u.id}">
+              <span id="email-display-${u.id}">${u.email}</span>
+              <button class="btn btn-link p-0 ms-1 reveal-email" data-id="${u.id}" style="font-size:0.72rem;vertical-align:baseline;opacity:0.6">reveal</button>
+            </td>
             <td class="user-role cell-like" data-id="${u.id}">${u.role}</td>
             <td class="d-flex gap-2">
               <button class="btn btn-sm btn-primary edit-in-form" data-id="${u.id}">Edit</button>
@@ -392,14 +396,20 @@
     }
 
     function attachHandlers(cachedUsers) {
-      // Edit → copy row values into the bottom form and highlight row
+      // Edit → fetch full user detail (unmasked email) then populate form
       document.querySelectorAll('.edit-in-form').forEach(btn => {
-        btn.onclick = () => {
+        btn.onclick = async () => {
           const id = +btn.dataset.id;
-          const u = cachedUsers.find(x => x.id === id);
-          if (!u) return;
+          pendingEditId = id;
+          let u;
+          try {
+            u = await authFetch(`/users/${id}`, { method: 'GET' });
+          } catch (err) {
+            if (pendingEditId === id) alert('Could not load user: ' + err.message);
+            return;
+          }
+          if (pendingEditId !== id) return; // superseded by a later edit click
 
-          // copy values to form (ONLY editable place)
           document.getElementById('newUsername').value = u.username;
           document.getElementById('newEmail').value    = u.email;
           document.getElementById('newRole').value     = u.role;
@@ -410,9 +420,22 @@
           setFormMode('update');
           highlightRow(id);
 
-          // bring form into view
           document.getElementById('createForm')
                   .scrollIntoView({behavior:'smooth', block:'center'});
+        };
+      });
+
+      // Reveal → fetch full user detail and replace masked email in table
+      document.querySelectorAll('.reveal-email').forEach(btn => {
+        btn.onclick = async () => {
+          const id = +btn.dataset.id;
+          try {
+            const u = await authFetch(`/users/${id}`, { method: 'GET' });
+            document.getElementById(`email-display-${id}`).textContent = u.email;
+            btn.remove();
+          } catch (err) {
+            alert('Could not reveal email: ' + err.message);
+          }
         };
       });
 
@@ -519,30 +542,19 @@
 
       try {
         const users = await authFetch('/users', { method: 'GET' });
-        const lowerU = username.toLowerCase(), lowerE = email.toLowerCase();
+        const lowerU = username.toLowerCase();
 
-        // exclude record being edited from duplicate checks
+        // username duplicate check (emails are masked in list, so email check is server-side)
         const usernameTaken = users.some(u =>
           (editingUserId ? u.id !== editingUserId : true) &&
           (u.username||'').toLowerCase() === lowerU
         );
-        const emailTaken = users.some(u =>
-          (editingUserId ? u.id !== editingUserId : true) &&
-          (u.email||'').toLowerCase() === lowerE
-        );
 
-        let blocked = false;
         if (usernameTaken){
           usernameError.textContent = 'Username already exists.';
           usernameError.classList.remove('d-none');
-          blocked = true;
+          return;
         }
-        if (emailTaken){
-          emailError.textContent = 'Email already in use.';
-          emailError.classList.remove('d-none');
-          blocked = true;
-        }
-        if (blocked) return;
 
         if (editingUserId){ // update existing user
           const payload = { username, email, role };

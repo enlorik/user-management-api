@@ -29,7 +29,7 @@ public class UserService {
      * Check if an email is already in use.
      */
     public boolean emailExists(String email) {
-        return userRepo.existsByEmail(email);
+        return userRepo.existsByEmailIgnoreCase(email);
     }
 
     /**

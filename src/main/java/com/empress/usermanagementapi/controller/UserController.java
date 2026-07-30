@@ -44,17 +44,25 @@ public class UserController {
 
     // ——— Admin-only endpoints ———
     
-    // return all users sorted by id (ascending)
+    // return all users sorted by id (ascending), emails masked
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserResponse> getAllUsers() {
         log.debug("Retrieving all users");
         List<UserResponse> users = userService.findAll(Sort.by(Sort.Direction.ASC, "id"))
                 .stream()
-                .map(UserResponse::fromEntity)
+                .map(UserResponse::fromEntityMasked)
                 .collect(Collectors.toList());
         log.debug("Retrieved {} users", users.size());
         return users;
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
+        Optional<User> opt = userService.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(UserResponse.fromEntity(opt.get()));
     }
 
     /**
@@ -150,7 +158,7 @@ public class UserController {
         }
         
         // Check if email is being changed to a different email
-        if (!request.getEmail().equals(existing.getEmail())) {
+        if (!request.getEmail().equalsIgnoreCase(existing.getEmail())) {
             // Check if the new email is already taken by another user
             if (userService.emailExists(request.getEmail())) {
                 log.warn("User update failed - email already exists: {}", 
