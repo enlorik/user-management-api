@@ -18,6 +18,20 @@ A streamlined Spring Boot application for managing user accounts with authentica
   <img src="docs/assets/flows/user-management-api.png" alt="User Management API" width="900">
 </p>
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/assets/screenshots/admin-dashboard.png" alt="Admin dashboard with masked emails" width="900">
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/log-analysis.png" alt="AI log analysis summary" width="900">
+</p>
+
+<p align="center">
+  <img src="docs/assets/screenshots/system-health.png" alt="System health dashboard" width="900">
+</p>
+
 ## Flow walkthroughs
 
 These hand-drawn flow diagrams show the main request paths through the application. Box colors match the architecture layers: orange for security/filtering, blue for user-facing controllers and services, green for repositories and persistence, and purple for log analysis.
