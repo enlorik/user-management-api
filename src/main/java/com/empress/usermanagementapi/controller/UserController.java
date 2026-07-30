@@ -158,7 +158,7 @@ public class UserController {
         }
         
         // Check if email is being changed to a different email
-        if (!request.getEmail().equals(existing.getEmail())) {
+        if (!request.getEmail().equalsIgnoreCase(existing.getEmail())) {
             // Check if the new email is already taken by another user
             if (userService.emailExists(request.getEmail())) {
                 log.warn("User update failed - email already exists: {}", 

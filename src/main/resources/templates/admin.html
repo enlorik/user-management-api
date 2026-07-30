@@ -297,6 +297,7 @@
     const API = '';
     let editingUserId   = null;   // when set, the Create button acts as Update
     let editingUserName = null;   // for heading text
+    let pendingEditId   = null;   // guards against stale out-of-order fetch responses
 
     async function authFetch(path, opts = {}) {
       opts.credentials = 'include';
@@ -399,13 +400,15 @@
       document.querySelectorAll('.edit-in-form').forEach(btn => {
         btn.onclick = async () => {
           const id = +btn.dataset.id;
+          pendingEditId = id;
           let u;
           try {
             u = await authFetch(`/users/${id}`, { method: 'GET' });
           } catch (err) {
-            alert('Could not load user: ' + err.message);
+            if (pendingEditId === id) alert('Could not load user: ' + err.message);
             return;
           }
+          if (pendingEditId !== id) return; // superseded by a later edit click
 
           document.getElementById('newUsername').value = u.username;
           document.getElementById('newEmail').value    = u.email;
