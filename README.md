@@ -2,6 +2,8 @@
 
 A streamlined Spring Boot application for managing user accounts with authentication, registration, profile updates, and basic REST endpoints.
 
+[Try live architecture here](https://enlorik.github.io/user-management-api/architecture-interactive.html)
+
 ## About
 
 - Authentication & authorization with role-based access (ADMIN / USER)
