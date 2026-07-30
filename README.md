@@ -106,18 +106,49 @@ These hand-drawn flow diagrams show the main request paths through the applicati
 mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-Docker (PostgreSQL):
+**Docker (PostgreSQL):**
 
+Build the image first:
+```bash
+docker build -t user-management-api .
 ```
-docker run -d -p 8080:8080 
-  -e PGHOST=your-db-host 
-  -e PGPORT=5432 
-  -e PGDATABASE=userdb 
-  -e PGUSER=dbuser
-  -e PGPASSWORD=dbpass 
-  user-management-api 
+
+Then run (pointing at an external PostgreSQL instance with SSL):
+```bash
+docker run -d -p 8080:8080 \
+  -e PGHOST=your-db-host \
+  -e PGPORT=5432 \
+  -e PGDATABASE=userdb \
+  -e PGUSER=dbuser \
+  -e PGPASSWORD=dbpass \
+  -e APP_BASE_URL=https://your-domain.com \
+  -e RESEND_API_KEY=your-resend-api-key \
+  -e RESEND_FROM="User Management <noreply@your-domain.com>" \
+  user-management-api
 ```
-License
+
+**Local Docker with a PostgreSQL container** (no SSL, fresh schema):
+```bash
+docker network create uma-net
+
+docker run -d --name uma-postgres --network uma-net \
+  -e POSTGRES_DB=userdb -e POSTGRES_USER=dbuser -e POSTGRES_PASSWORD=dbpass \
+  postgres:16-alpine
+
+docker run -d --name uma-app --network uma-net -p 8080:8080 \
+  -e "SPRING_DATASOURCE_URL=jdbc:postgresql://uma-postgres:5432/userdb?sslmode=disable" \
+  -e SPRING_DATASOURCE_USERNAME=dbuser \
+  -e SPRING_DATASOURCE_PASSWORD=dbpass \
+  -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+  -e APP_BASE_URL=http://localhost:8080 \
+  -e RESEND_API_KEY=your-resend-api-key \
+  -e RESEND_FROM="User Management <noreply@example.com>" \
+  user-management-api
+```
+
+> **Note:** The production datasource URL (`application.properties`) requires `sslmode=require`. Local PostgreSQL containers do not have SSL configured, so the full URL override with `sslmode=disable` is needed. `SPRING_JPA_HIBERNATE_DDL_AUTO=update` lets Hibernate create the schema on first run since no DDL migration scripts are included.
+
+## License
 
 For educational and demonstration purposes.
 
