@@ -148,10 +148,6 @@ docker run -d --name uma-app --network uma-net -p 8080:8080 \
 
 > **Note:** The production datasource URL (`application.properties`) requires `sslmode=require`. Local PostgreSQL containers do not have SSL configured, so the full URL override with `sslmode=disable` is needed. `SPRING_JPA_HIBERNATE_DDL_AUTO=update` lets Hibernate create the schema on first run since no DDL migration scripts are included.
 
-## License
-
-For educational and demonstration purposes.
-
 ## Design notes
 
 **Why SHA-256 for tokens but BCrypt for passwords** — Password reset and email verification tokens need to be looked up by value: the raw token comes back in a URL, and the server needs to find the matching database row. BCrypt salts every hash, making two hashes of the same input always different — lookup by value is impossible. SHA-256 is deterministic, which makes the lookup work. It's safe here because the input is a random UUID, not a guessable string; nobody brute-forces a UUID the way they'd brute-force "password123". Passwords still use BCrypt, because they're low-entropy and are always verified by comparison, never fetched by value.
@@ -161,3 +157,7 @@ For educational and demonstration purposes.
 **Why the rate limiter is a servlet filter** — The filter rejects abusive IPs before requests reach controller code or the repository layer. One important caveat: Spring Boot's Spring Security filter defaults to order −100, meaning it runs before `@Order(1)` filters. For endpoints Spring Security intercepts directly (such as form-login `POST /login`), Security processes the request first — so the rate limiter does not protect the authentication layer itself. It guards the application layer downstream of Security.
 
 **Known limits** — Sessions and rate-limit buckets are both in-memory, so a second app instance breaks session stickiness and doubles the effective rate limit. Spring Session backed by Redis handles the first; a distributed Bucket4j backend handles the second. Email is sent via the Resend API with configurable retries (default 3 attempts), so transient failures are handled — the remaining gap is a durable outbox: if the process crashes mid-send, no retry happens.
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
