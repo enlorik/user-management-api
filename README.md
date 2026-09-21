@@ -18,7 +18,7 @@ A streamlined Spring Boot application for managing user accounts with authentica
 
 ## Flow walkthroughs
 
-These hand-drawn flow diagrams show the main request paths through the application. Box colors match the architecture layers: orange for security/filtering, blue for user-facing controllers and services, green for repositories and persistence, and purple for log analysis.
+These flow diagrams show the main request paths through the application. Box colors match the architecture layers: orange for security/filtering, blue for user-facing controllers and services, green for repositories and persistence, and purple for log analysis.
 
 <p align="center">
   <img src="docs/assets/flows/register-flow.png" alt="Register flow" width="900">
