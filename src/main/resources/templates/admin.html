@@ -4,841 +4,850 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard – User Management</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <style>
-    /* message boxes */
-    .form-error{
-      color:#842029;background:#f8d7da;border:1px solid #f5c2c7;border-radius:4px;
-      padding:6px 10px;margin-top:4px;font-size:.9rem;
+    *{box-sizing:border-box;}
+    html,body{margin:0;}
+    body{
+      --text:#1f2430; --muted:#9ca0ae; --line:#efedf4; --sidebar-bg:#f8f7fb;
+      --dark:#4b3a5e; --violet:#6d5bd0; --violet-bg:#e4e1f7;
+      --mint:#2f9e6b; --mint-bg:#d7f0e3; --peach:#b07a3e; --peach-bg:#f3e5d3;
+      --pink:#c8537a; --pink-bg:#f7e0e6; --blue:#4d7fd6; --blue-bg:#dce7fb; --amber:#b98a2e; --amber-bg:#faf1d4;
+      --accent:var(--violet);
+      --role-admin-bg:var(--violet-bg); --role-admin-fg:var(--violet); --role-user-bg:var(--blue-bg); --role-user-fg:var(--blue);
+      --cal-bg:#fff; --cal-hover:var(--violet-bg); --cal-range:var(--violet-bg);
+      --glass-bg:rgba(255,255,255,.34); --glass-border:rgba(255,255,255,.45);
+      font-family:'Plus Jakarta Sans',sans-serif; font-size:13px;
+      background:#f0e6ea;
+      color:var(--text); min-height:100vh;
     }
-    .form-success{
-      color:#0f5132;background:#d1e7dd;border:1px solid #badbcc;border-radius:4px;
-      padding:10px 15px;margin-top:20px;font-size:1rem;
+    *{ font-family:'Plus Jakarta Sans',sans-serif; }
+    .hidden{ display:none !important; }
+
+    .shell{
+      position:relative; height:100vh; height:100dvh;
+      display:grid; grid-template-columns:224px 1fr 252px; gap:0;
+      overflow:hidden;
+      background:
+        linear-gradient(to bottom, rgba(217,201,213,.6) 0%, rgba(217,201,213,.32) 35%, transparent 58%),
+        radial-gradient(circle at 100% 100%, rgba(138,118,154,.65) 0%, rgba(209,204,219,.45) 30%, transparent 55%),
+        radial-gradient(circle at 0% 100%, rgba(187,192,186,.65) 0%, rgba(217,216,198,.45) 30%, transparent 55%),
+        #f0e6ea;
     }
 
-    /* compact create/update button */
-    .btn-tight{width:100%;height:38px;}
+    /* ---------- LEFT SIDEBAR ---------- */
+    .side{
+      background:var(--glass-bg); backdrop-filter:blur(18px) saturate(165%); -webkit-backdrop-filter:blur(18px) saturate(165%);
+      border-right:1px solid var(--glass-border);
+      padding:20px 18px; display:flex; flex-direction:column; height:100%; overflow:hidden;
+    }
+    .brand{ display:flex; align-items:center; gap:9px; margin-bottom:18px; }
+    .brand .mark{ width:32px; height:32px; border-radius:9px; background:linear-gradient(135deg,var(--violet),var(--pink)); flex:none; }
+    .brand .wordmark{ font-size:14.5px; font-weight:800; line-height:1.1; }
+    .brand .sub{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; font-weight:700; }
+    .ws-label{ font-size:9.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; font-weight:700; margin:4px 0 8px; }
+    nav.side-nav{ display:flex; flex-direction:column; gap:3px; }
+    nav.side-nav a{ display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:10px; text-decoration:none; color:var(--muted); font-size:12.5px; font-weight:600; cursor:pointer; }
+    nav.side-nav a .ic{ font-size:14px; width:16px; text-align:center; color:var(--muted); }
+    nav.side-nav a .badge{ margin-left:auto; font-size:10.5px; color:var(--violet); font-weight:800; }
+    nav.side-nav a.active{ background:#ffffff; color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,.06); }
+    nav.side-nav a.active .ic{ color:#000; }
+    .status-card{ margin-top:16px; background:#ffffff; border:1px solid var(--line); border-radius:16px; padding:14px; }
+    .status-card .hd{ display:flex; justify-content:space-between; align-items:center; margin-bottom:9px; }
+    .status-card .hd span:first-child{ font-size:12px; font-weight:700; }
+    .status-card .hd .ok{ font-size:10px; font-weight:700; padding:2px 7px; border-radius:99px; }
+    .status-card .hd .ok.up{ color:var(--mint); background:var(--mint-bg); }
+    .status-card .hd .ok.down{ color:var(--pink); background:var(--pink-bg); }
+    .status-card .row{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); margin-bottom:3px; }
+    .status-card .cap{ font-size:10.5px; color:var(--muted); line-height:1.4; margin-top:8px; }
+    .side-spacer{ flex:1; min-height:12px; }
+    .side-foot{ border-top:1px solid var(--line); padding-top:12px; }
+    .side-foot button.link{ background:none; border:none; cursor:pointer; padding:0; display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--muted); font-weight:600; font-family:inherit; }
+    .side-foot button.link:hover{ color:var(--text); }
 
-    /* scrollable users table wrapper (fixed height so form stays put) */
-    .users-scroll{
-      height:420px;
-      overflow-y:auto;
-      border:1px solid rgba(0,0,0,.075);
-      border-radius:.5rem;
+    /* ---------- MAIN ---------- */
+    .main{ position:relative; height:100%; padding:22px 26px; display:flex; flex-direction:column; overflow:hidden; gap:16px; }
+    .main::before{
+      content:""; position:absolute; inset:0; background:#f2eff6; z-index:0;
+      -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+      -webkit-mask-size: 100% 100%, calc(100% - 52px) 88px;
+      -webkit-mask-position: 0 0, 26px 85px;
+      -webkit-mask-repeat: no-repeat, no-repeat;
+      -webkit-mask-composite: xor;
+      mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+      mask-size: 100% 100%, calc(100% - 52px) 88px;
+      mask-position: 0 0, 26px 85px;
+      mask-repeat: no-repeat, no-repeat;
+      mask-composite: exclude;
     }
-    /* sticky header inside scroll */
-    .users-scroll thead th{
-      position:sticky; top:0; z-index:2; background:#f8f9fa;
-    }
+    .main > *{ position:relative; z-index:1; }
+    .topbar{ display:flex; justify-content:space-between; align-items:center; flex:none; margin:0; }
+    .main h1{ font-size:21px; font-weight:800; margin:0 0 2px; letter-spacing:-.01em; }
+    .topbar .subtext{ font-size:12px; color:var(--muted); }
 
-    /* keep layout stable where messages appear */
-    .msg-reserve{min-height:44px;} /* ~ one error/success box height */
+    .hero-frame{ flex:none; padding:4px; border-radius:18px; background:linear-gradient(to right, rgba(224,170,130,.12), rgba(232,160,190,.12)); box-shadow:0 8px 24px rgba(109,91,208,.14); }
+    .hero{ background:rgba(255,255,255,.30); backdrop-filter:blur(18px) saturate(195%); -webkit-backdrop-filter:blur(18px) saturate(195%); border-radius:14px; padding:16px 20px; display:flex; flex-direction:column; gap:11px; }
+    .hero .hero-row1{ display:flex; align-items:center; justify-content:space-between; gap:14px; }
+    .hero .eyebrow{ font-size:9px; font-weight:800; color:var(--violet); text-transform:uppercase; letter-spacing:.07em; margin-bottom:2px; }
+    .hero h2{ font-size:14.5px; font-weight:700; margin:0; }
+    .hero .bar-row{ display:flex; align-items:center; gap:10px; }
+    .hero .bar-track{ flex:1; max-width:260px; height:5px; border-radius:99px; background:#d9d2f0; overflow:hidden; }
+    .hero .bar-fill{ height:100%; background:var(--violet); border-radius:99px; transition:width .4s ease; }
+    .hero .bar-row .pct{ font-size:11px; font-weight:700; color:var(--violet); white-space:nowrap; }
 
-    /* tighter table rows */
-    .table td, .table th { padding:.55rem .75rem; }
+    .stat-row{ flex:none; display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+    .stat-tile{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 14px; display:flex; align-items:center; gap:10px; }
+    .stat-tile .ic{ width:26px; height:26px; border-radius:7px; display:flex; align-items:center; justify-content:center; font-size:12px; flex:none; }
+    .stat-tile .v{ font-size:13.5px; font-weight:700; line-height:1.2; }
+    .stat-tile .k{ font-size:10.5px; color:var(--muted); font-weight:600; }
 
-    /* highlight the row being edited (no shape change, just tint) */
-    .editing-row{
-      background:#cfe2ff;
-      transition:background .15s ease;
-    }
-    .editing-row .cell-like{
-      background-color:#e7f1ff;
-      border-color:#9ec5fe;
-    }
+    .panel{ background:#fff; border:1px solid var(--line); border-radius:16px; padding:14px 16px; flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+    .panel h3{ margin:0; font-size:13.5px; font-weight:700; }
+    .panel-hd{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex:none; }
 
-    /* cells look a bit like inputs but are read-only */
-    .cell-like{
-      background-color:#fff;
-      border:1px solid #dee2e6;
-      border-radius:.25rem;
-      padding:.25rem .5rem;
-      font-size:.9rem;
-    }
+    .users-pane{ flex:1; min-height:0; display:flex; flex-direction:column; }
+    .table-scroll{ flex:1; min-height:0; overflow-y:auto; }
+    table.u-table{ font-size:12px; width:100%; border-collapse:collapse; table-layout:fixed; }
+    table.u-table th:nth-child(1), table.u-table td:nth-child(1){ width:27%; }
+    table.u-table th:nth-child(2), table.u-table td:nth-child(2){ width:38%; }
+    table.u-table th:nth-child(3), table.u-table td:nth-child(3){ width:17%; }
+    table.u-table th:nth-child(4), table.u-table td:nth-child(4){ width:18%; }
+    table.u-table th{ text-align:left; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); padding:0 8px 7px; font-weight:700; position:sticky; top:0; background:#fff; z-index:2; }
+    table.u-table td{ padding:9px 8px; border-top:1px solid var(--line); vertical-align:middle; overflow-wrap:anywhere; }
+    .u-cell{ display:flex; align-items:center; gap:10px; }
+    .u-ava{ width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9.5px; font-weight:700; color:#fff; flex:none; }
+    .reveal-lnk{ color:var(--violet); font-size:10px; cursor:pointer; font-weight:700; background:none; border:none; padding:0; font-family:inherit; }
+    .role-badge{ font-size:9px; font-weight:700; padding:3px 8px; border-radius:99px; text-transform:uppercase; letter-spacing:.03em; }
+    .role-admin{ background:var(--role-admin-bg); color:var(--role-admin-fg); }
+    .role-user{ background:var(--role-user-bg); color:var(--role-user-fg); }
+    .icon-btn{ width:22px; height:22px; border-radius:8px; border:1px solid var(--line); background:#fdfcff; display:inline-flex; align-items:center; justify-content:center; font-size:10px; cursor:pointer; margin-right:4px; color:var(--text); }
+    .editing-row{ background:var(--violet-bg) !important; }
 
-    /* AI Summary section styling */
-    .stat-card {
-      padding: 1rem;
-      background: #f8f9fa;
-      border-radius: .5rem;
-      height: 100%;
+    .btn{ border:none; border-radius:10px; height:34px; padding:0 15px; font-weight:700; font-size:12.5px; cursor:pointer; color:#fff; background:var(--dark); display:inline-flex; align-items:center; gap:6px; }
+    .btn.danger{ background:var(--pink); }
+
+    /* ---------- RIGHT SIDEBAR ---------- */
+    .rside{
+      background:var(--glass-bg); backdrop-filter:blur(18px) saturate(165%); -webkit-backdrop-filter:blur(18px) saturate(165%);
+      border-left:1px solid var(--glass-border);
+      height:100%; overflow-y:auto; padding:20px 14px; display:flex; flex-direction:column; gap:12px;
     }
-    .stat-card h3 {
-      color: #0d6efd;
-      margin: 0;
-      font-size: 2rem;
-    }
-    #summaryText {
-      font-size: 0.95rem;
-      line-height: 1.6;
-      max-height: 400px;
-      overflow-y: auto;
-      white-space: pre-wrap;
+    .qt-head{ display:flex; justify-content:space-between; align-items:baseline; flex:none; }
+    .qt-head span:first-child{ font-size:12.5px; font-weight:700; }
+    .qt-grid{ flex:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin-top:10px; }
+    .qt-grid .qt{ min-width:0; overflow:hidden; background:#f2eff6; border:1px solid var(--line); border-radius:12px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; cursor:pointer; aspect-ratio:1/1; }
+    .qt-grid .qt .chip{ width:24px; height:24px; border-radius:7px; margin:0; display:flex; align-items:center; justify-content:center; font-size:11px; flex:none; }
+    .qt-grid .qt .lb{ font-size:9px; font-weight:700; color:var(--text); line-height:1.2; }
+    @keyframes rpanelFlash{ 0%{ box-shadow:0 0 0 0 rgba(109,91,208,0); } 30%{ box-shadow:0 0 0 2px rgba(109,91,208,.45); } 100%{ box-shadow:0 0 0 0 rgba(109,91,208,0); } }
+    .rpanel.flash{ animation: rpanelFlash .7s ease; }
+
+    .rpanel{ flex:none; background:#f2eff6; border:1px solid var(--line); border-radius:16px; padding:13px 14px; }
+    .rpanel h4{ margin:0 0 4px; font-size:12.5px; font-weight:700; display:flex; align-items:center; gap:6px; }
+    .rpanel .sub{ font-size:10.5px; color:var(--muted); margin:0 0 10px; }
+    .mini-label{ display:block; font-size:9.5px; color:var(--muted); font-weight:700; margin-top:8px; margin-bottom:4px; padding-left:8px; text-transform:uppercase; letter-spacing:.03em; }
+    .mini-select-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+    .mini-select-row .mini-label{ margin-top:0; }
+    .mini-input, .mini-select{ width:100%; border-radius:9px; border:1px solid var(--line); background:#fff; padding:7px 9px; font-family:inherit; font-size:10.5px; color:var(--text); }
+
+    /* calendar date-range picker */
+    .cal{ width:100%; border-radius:14px; padding:8px; background:#fff; border:1px solid var(--line); }
+    .cal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .cal-head .m{ font-weight:700; font-size:11.5px; }
+    .cal-nav{ display:flex; gap:4px; }
+    .cal-nav button{ width:22px; height:22px; border-radius:7px; border:1px solid var(--line); background:transparent; color:var(--text); cursor:pointer; font-size:11px; }
+    .cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; text-align:center; }
+    .cal-grid .dow{ font-size:8.5px; color:var(--muted); font-weight:700; padding-bottom:5px; display:flex; align-items:center; justify-content:center; }
+    .cal-grid .day{ font-size:10px; padding:5px 0; border-radius:7px; cursor:pointer; color:var(--text); display:flex; align-items:center; justify-content:center; }
+    .cal-grid .day:hover{ background:var(--violet-bg); }
+    .cal-grid .day.muted{ color:var(--muted); opacity:.4; cursor:default; }
+    .cal-grid .day.in-range{ background:var(--violet-bg); border-radius:0; }
+    .cal-grid .day.range-start{ background:var(--violet); color:#fff; border-radius:7px 0 0 7px; }
+    .cal-grid .day.range-end{ background:var(--violet); color:#fff; border-radius:0 7px 7px 0; }
+    .cal-grid .day.today{ box-shadow:inset 0 0 0 1.5px var(--violet); }
+    .mini-range{ font-size:10px; margin-top:8px; padding:7px 10px; background:#fff; border:1px solid var(--line); border-radius:8px; color:var(--muted); }
+    .mini-range b{ color:var(--text); }
+    .mini-gen{ width:100%; margin-top:12px; height:32px; font-size:11px; justify-content:center; }
+    .mini-loading{ margin-top:10px; font-size:10.5px; color:var(--muted); text-align:center; }
+    .mini-error{ margin-top:10px; font-size:10.5px; color:var(--pink); background:var(--pink-bg); padding:8px 10px; border-radius:8px; }
+    .mini-results{ margin-top:10px; padding-top:10px; border-top:1px solid var(--line); }
+    .mini-results-stats{ display:flex; gap:14px; margin-bottom:8px; }
+    .mini-results-stats .v{ display:block; font-size:15px; font-weight:800; color:var(--text); }
+    .mini-results-stats .k{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+    .mini-results-row{ margin-top:6px; font-size:9.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+    .val-sm{ display:block; font-size:10.5px; color:var(--text); font-weight:600; text-transform:none; letter-spacing:0; margin-top:2px; }
+    .mini-badges{ display:flex; gap:5px; flex-wrap:wrap; margin-top:5px; }
+    .mini-badges span{ font-size:9px; font-weight:700; padding:3px 8px; border-radius:99px; background:var(--violet-bg); color:var(--violet); }
+    .mini-results-text{ font-size:10.5px; line-height:1.55; color:var(--text); margin:8px 0; }
+    .mini-issues{ margin:5px 0 0; padding-left:16px; font-size:10.5px; color:var(--text); line-height:1.6; }
+
+    .health-list{ display:flex; flex-direction:column; gap:9px; }
+    .health-row2{ display:flex; justify-content:space-between; align-items:center; font-size:11px; }
+    .health-row2 .lbl{ font-weight:700; color:var(--text); }
+    .health-row2 .val{ display:flex; align-items:center; gap:5px; color:var(--muted); font-size:10.5px; }
+    .dot{ display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--muted); }
+    .dot.up{ background:#22c55e; }
+    .status-track{ height:4px; border-radius:99px; background:var(--line); overflow:hidden; margin-top:4px; }
+    .status-fill{ height:100%; border-radius:99px; width:0%; transition:width .4s ease, background .3s ease; background:var(--muted); }
+    .status-fill.up{ width:100%; background:var(--mint); }
+    .status-fill.down{ width:100%; background:var(--pink); }
+    .dot.down{ background:var(--pink); }
+    .health-details{ margin-top:10px; font-size:10px; color:var(--muted); line-height:1.6; }
+    .health-details b{ color:var(--text); }
+
+    .rside-spacer{ flex:1; min-height:16px; }
+    .rside-foot{ flex:none; border-top:1px solid var(--glass-border); padding-top:12px; font-size:10.5px; color:var(--muted); text-align:center; }
+
+    /* ---------- Create User drawer ---------- */
+    .drawer-overlay{ position:fixed; inset:0; background:rgba(40,30,50,.35); backdrop-filter:blur(2px); opacity:0; pointer-events:none; transition:opacity .25s; z-index:50; }
+    .drawer-overlay.open{ opacity:1; pointer-events:auto; }
+    .drawer{ position:fixed; top:0; right:0; height:100%; width:360px; background:#fff; box-shadow:-10px 0 40px rgba(53,47,69,.18); transform:translateX(100%); transition:transform .3s cubic-bezier(.34,1.1,.64,1); z-index:51; padding:26px 24px; overflow-y:auto; }
+    .drawer.open{ transform:translateX(0); }
+    .drawer-close{ position:absolute; top:20px; right:20px; width:28px; height:28px; border-radius:9px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+    .drawer h3{ margin:0 0 4px; font-size:15px; }
+    .drawer .field{ margin-top:14px; }
+    .drawer .field label{ display:block; font-size:10.5px; color:var(--muted); margin-bottom:6px; font-weight:600; }
+    .drawer .field input, .drawer .field select{ width:100%; border-radius:10px; border:1px solid var(--line); background:#fdfcff; padding:8px 11px; font-family:inherit; font-size:12.5px; color:var(--text); }
+    .form-error{ color:#842029; background:#f8d7da; border:1px solid #f5c2c7; border-radius:4px; padding:6px 10px; margin-top:4px; font-size:.82rem; }
+    .form-success{ color:#0f5132; background:#d1e7dd; border:1px solid #badbcc; border-radius:4px; padding:10px 15px; margin-top:14px; font-size:.9rem; }
+
+    @media (max-width:900px){
+      body{ padding:0; }
+      .shell{ min-height:100vh; grid-template-columns:1fr; max-width:100%; border-radius:0; }
+      .side, .rside{ display:none; }
+      .main{ height:auto; overflow:visible; }
+      .table-scroll{ overflow:visible; }
+      .drawer{ width:88%; }
     }
   </style>
 </head>
 <body>
-  <!-- Navbar -->
-  <nav class="navbar navbar-dark bg-dark">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">Admin Dashboard</a>
-      <form class="d-flex" method="post" th:action="@{/logout}">
-        <button type="submit" class="btn btn-outline-light">Logout</button>
+
+<div class="shell">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="side">
+    <div class="brand">
+      <div class="mark"></div>
+      <div><div class="wordmark">UserMgmt</div><div class="sub">Admin Console</div></div>
+    </div>
+    <div class="ws-label">Workspace</div>
+    <nav class="side-nav">
+      <a class="active"><span class="ic">▦</span>Dashboard</a>
+      <a><span class="ic">👤</span>Users<span class="badge" id="userCountBadge">—</span></a>
+      <a><span class="ic">✦</span>AI Summary</a>
+      <a><span class="ic">♥</span>Health</a>
+    </nav>
+
+    <div class="qt-head"><span>Quick tools</span></div>
+    <div class="qt-grid">
+      <div class="qt" id="qtNewUser"><div class="chip" style="background:var(--violet-bg);color:var(--violet)">＋</div><div class="lb">New User</div></div>
+      <div class="qt" id="qtAiSummary"><div class="chip" style="background:var(--blue-bg);color:var(--blue)">✦</div><div class="lb">AI Summary</div></div>
+      <div class="qt" id="qtHealth"><div class="chip" style="background:var(--mint-bg);color:var(--mint)">♥</div><div class="lb">Health</div></div>
+    </div>
+
+    <div class="rpanel" id="healthPanel" style="background:#ffffff; margin-top:14px;">
+      <h4>♥ System Health</h4>
+      <div class="health-list">
+        <div>
+          <div class="health-row2"><span class="lbl">Application</span><span class="val" id="appStatus"><span class="dot"></span>Loading…</span></div>
+          <div class="status-track"><div class="status-fill" id="appStatusBar"></div></div>
+        </div>
+        <div>
+          <div class="health-row2"><span class="lbl">Database</span><span class="val" id="dbStatus"><span class="dot"></span>Loading…</span></div>
+          <div class="status-track"><div class="status-fill" id="dbStatusBar"></div></div>
+        </div>
+        <div class="health-row2"><span class="lbl">Last checked</span><span class="val" id="healthLastUpdated" style="font-family:'JetBrains Mono',monospace;">-</span></div>
+      </div>
+      <div id="healthDetailsText" class="health-details"></div>
+      <div id="healthError" class="mini-error hidden"></div>
+    </div>
+
+    <div class="side-spacer"></div>
+
+    <div class="side-foot">
+      <form method="post" th:action="@{/logout}">
+        <button type="submit" class="link"><span>⎋</span>Logout</button>
       </form>
     </div>
-  </nav>
-
-  <div class="container mt-4">
-    <h2>All Users</h2>
-
-    <!-- SCROLLABLE TABLE (fixed height so form below doesn't jump) -->
-    <div class="users-scroll shadow-sm">
-      <table class="table table-hover mb-0">
-        <thead class="table-light">
-        <tr>
-          <th style="width:70px">ID</th>
-          <th style="width:220px">Username</th>
-          <th>Email</th>
-          <th style="width:130px">Role</th>
-          <th style="width:140px">Actions</th>
-        </tr>
-        </thead>
-        <tbody id="usersTableBody"></tbody>
-      </table>
-    </div>
-
-    <hr/>
-    <!-- this title will change between Create / Edit -->
-    <h3 id="formTitle">Create New User</h3>
-
-    <!-- CREATE / UPDATE FORM (ONLY place where editing happens) -->
-    <form id="createForm" class="row g-3">
-      <div class="col-md-3">
-        <input type="text" id="newUsername" class="form-control" placeholder="Username" required/>
-        <div id="usernameError" class="form-error d-none"></div>
-      </div>
-      <div class="col-md-3">
-        <input type="email" id="newEmail" class="form-control" placeholder="Email" required/>
-        <div id="emailError" class="form-error d-none"></div>
-      </div>
-      <div class="col-md-3">
-        <input type="password" id="newPassword" class="form-control" placeholder="Password"/>
-        <div id="passwordError" class="form-error d-none"></div>
-      </div>
-      <div class="col-md-1">
-        <select id="newRole" class="form-select">
-          <option value="USER">USER</option>
-          <option value="ADMIN">ADMIN</option>
-        </select>
-      </div>
-      <div class="col-md-2 d-grid">
-        <button id="createBtn" type="submit" class="btn btn-success btn-tight">Create</button>
-      </div>
-    </form>
-
-    <!-- reserved gap to avoid layout jump + success box uses same slot -->
-    <div class="msg-reserve">
-      <div id="createSuccess" class="form-success d-none">User created successfully.</div>
-    </div>
-
-    <hr/>
-    <!-- AI SUMMARY SECTION -->
-    <h3>AI Log Summary</h3>
-    <p class="text-muted">Generate concise AI insights from system logs based on selected filters.</p>
-    
-    <form id="summaryForm" class="row g-3">
-      <div class="col-md-3">
-        <label for="summaryStartTime" class="form-label">Start Time</label>
-        <input type="datetime-local" id="summaryStartTime" class="form-control" />
-      </div>
-      <div class="col-md-3">
-        <label for="summaryEndTime" class="form-label">End Time</label>
-        <input type="datetime-local" id="summaryEndTime" class="form-control" />
-      </div>
-      <div class="col-md-2">
-        <label for="summaryLogLevel" class="form-label">Log Level</label>
-        <select id="summaryLogLevel" class="form-select">
-          <option value="">All Levels</option>
-          <option value="INFO">INFO</option>
-          <option value="WARN">WARN</option>
-          <option value="ERROR">ERROR</option>
-          <option value="DEBUG">DEBUG</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label for="summaryActionType" class="form-label">Action Type</label>
-        <select id="summaryActionType" class="form-select">
-          <option value="">All Actions</option>
-          <option value="USER_LOGIN">User Login</option>
-          <option value="USER_REGISTRATION">User Registration</option>
-          <option value="USER_CREATE">User Create</option>
-          <option value="USER_UPDATE">User Update</option>
-          <option value="USER_DELETE">User Delete</option>
-          <option value="EMAIL_VERIFICATION">Email Verification</option>
-          <option value="PASSWORD_RESET">Password Reset</option>
-          <option value="LOG_SUMMARIZATION">Log Summarization</option>
-        </select>
-      </div>
-      <div class="col-md-2 d-flex align-items-end">
-        <button id="generateSummaryBtn" type="submit" class="btn btn-primary w-100">Generate Summary</button>
-      </div>
-    </form>
-
-    <!-- Summary Results -->
-    <div id="summaryResults" class="mt-4 d-none">
-      <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-          <h5 class="mb-0">Summary Results</h5>
-        </div>
-        <div class="card-body">
-          <!-- Summary Stats -->
-          <div class="row mb-3">
-            <div class="col-md-3">
-              <div class="stat-card">
-                <h6 class="text-muted">Total Logs</h6>
-                <h3 id="totalLogs">0</h3>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="stat-card">
-                <h6 class="text-muted">Time Range</h6>
-                <p id="timeRange" class="mb-0 small">-</p>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="stat-card">
-                <h6 class="text-muted">Log Levels</h6>
-                <div id="logLevels" class="small">-</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- AI Summary Text -->
-          <div class="alert alert-info">
-            <h6 class="alert-heading">AI Analysis</h6>
-            <div id="summaryText">Loading...</div>
-          </div>
-
-          <!-- Action Types Distribution -->
-          <div id="actionTypesSection" class="mt-3">
-            <h6>Action Types Distribution</h6>
-            <div id="actionTypes" class="small"></div>
-          </div>
-
-          <!-- Top Issues -->
-          <div id="topIssuesSection" class="mt-3">
-            <h6>Top Issues</h6>
-            <ul id="topIssues"></ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Loading spinner -->
-    <div id="summaryLoading" class="text-center mt-4 d-none">
-      <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-      <p class="mt-2">Generating AI summary...</p>
-    </div>
-
-    <!-- Error message -->
-    <div id="summaryError" class="alert alert-danger mt-4 d-none" role="alert"></div>
-
-    <hr/>
-    <!-- SYSTEM HEALTH SECTION -->
-    <h3>System Health</h3>
-    <p class="text-muted">Real-time system health metrics including application status and database connectivity.</p>
-    
-    <!-- Health Results -->
-    <div id="healthResults" class="mt-4">
-      <div class="card shadow-sm">
-        <div id="healthCardHeader" class="card-header bg-success text-white">
-          <h5 class="mb-0">System Health Status</h5>
-        </div>
-        <div class="card-body">
-          <!-- Health Stats -->
-          <div class="row mb-3">
-            <div class="col-md-4">
-              <div class="stat-card">
-                <h6 class="text-muted">Application Status</h6>
-                <h3 id="appStatus" class="text-success">Loading...</h3>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="stat-card">
-                <h6 class="text-muted">Database Status</h6>
-                <h3 id="dbStatus" class="text-muted">Loading...</h3>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="stat-card">
-                <h6 class="text-muted">Last Updated</h6>
-                <p id="healthLastUpdated" class="mb-0 small">-</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Health Details -->
-          <div id="healthDetails" class="alert alert-secondary">
-            <h6 class="alert-heading">Health Details</h6>
-            <div id="healthDetailsText">Loading health data...</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Health Error message -->
-    <div id="healthError" class="alert alert-danger mt-4 d-none" role="alert"></div>
   </div>
 
-  <script>
-    const API = '';
-    let editingUserId   = null;   // when set, the Create button acts as Update
-    let editingUserName = null;   // for heading text
-    let pendingEditId   = null;   // guards against stale out-of-order fetch responses
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div><h1>Admin Dashboard</h1><div class="subtext">Users, AI log summary, and system health.</div></div>
+    </div>
 
-    async function authFetch(path, opts = {}) {
-      opts.credentials = 'include';
-      opts.headers = { 'Content-Type': 'application/json' };
-      const res = await fetch(API + path, opts);
-      let data;
-      try { data = await res.json(); } catch { data = {}; }
-      if (!res.ok) {
-        const errorMsg = data?.error || 'HTTP ' + res.status;
-        throw new Error(errorMsg);
+    <div class="hero-frame">
+      <div class="hero">
+        <div class="hero-row1">
+          <div><div class="eyebrow">✦ System Overview</div><h2 id="heroHeadline">Loading users…</h2></div>
+        </div>
+        <div class="bar-row"><div class="bar-track"><div class="bar-fill" id="heroBarFill" style="width:0%"></div></div><span class="pct" id="heroBarPct">—</span></div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-tile"><div class="ic" style="background:var(--mint-bg);color:var(--mint)">✓</div><div><div class="v" id="statAdmins">—</div><div class="k">Admins</div></div></div>
+      <div class="stat-tile"><div class="ic" style="background:var(--peach-bg);color:var(--peach)">✉</div><div><div class="v" id="statPending">—</div><div class="k">Pending verification</div></div></div>
+      <div class="stat-tile"><div class="ic" style="background:var(--blue-bg);color:var(--blue)">⛔</div><div><div class="v" id="statRateLimits">—</div><div class="k">Rate-limit trips (24h)</div></div></div>
+    </div>
+
+    <div class="users-pane">
+      <div class="panel">
+        <div class="panel-hd"><h3>All Users</h3><button class="btn" id="openDrawerBtn" type="button">＋ New User</button></div>
+        <div class="table-scroll">
+          <table class="u-table">
+            <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <div class="rside">
+    <div class="rpanel" id="aiPanel">
+      <h4>✦ AI Log Summary</h4>
+      <p class="sub">Pick a range, filters, then generate.</p>
+
+      <div class="cal" id="summaryCal"></div>
+      <div class="mini-range" id="summaryRangeReadout">Select a start and end date</div>
+
+      <div class="mini-select-row">
+        <div>
+          <label class="mini-label" for="summaryLogLevel">Log level</label>
+          <select id="summaryLogLevel" class="mini-select">
+            <option value="">All levels</option>
+            <option value="INFO">INFO</option>
+            <option value="WARN">WARN</option>
+            <option value="ERROR">ERROR</option>
+            <option value="DEBUG">DEBUG</option>
+          </select>
+        </div>
+        <div>
+          <label class="mini-label" for="summaryActionType">Action type</label>
+          <select id="summaryActionType" class="mini-select">
+            <option value="">All actions</option>
+            <option value="USER_LOGIN">User Login</option>
+            <option value="USER_REGISTRATION">User Registration</option>
+            <option value="USER_CREATE">User Create</option>
+            <option value="USER_UPDATE">User Update</option>
+            <option value="USER_DELETE">User Delete</option>
+            <option value="EMAIL_VERIFICATION">Email Verification</option>
+            <option value="PASSWORD_RESET">Password Reset</option>
+            <option value="LOG_SUMMARIZATION">Log Summarization</option>
+          </select>
+        </div>
+      </div>
+      <button id="generateSummaryBtn" type="button" class="btn mini-gen">Generate Summary</button>
+
+      <div id="summaryLoading" class="mini-loading hidden">Generating AI summary…</div>
+      <div id="summaryError" class="mini-error hidden"></div>
+
+      <div id="summaryResults" class="mini-results hidden">
+        <div class="mini-results-stats">
+          <div><span class="v" id="totalLogs">0</span><span class="k">total logs</span></div>
+        </div>
+        <div class="mini-results-row">Log levels</div>
+        <div id="logLevels" class="mini-badges"></div>
+        <p class="mini-results-text" id="summaryText">Loading...</p>
+        <div id="actionTypesSection" class="hidden">
+          <div class="mini-results-row">Action types</div>
+          <div id="actionTypes" class="mini-badges"></div>
+        </div>
+        <div id="topIssuesSection" class="hidden">
+          <div class="mini-results-row">Top issues</div>
+          <ul id="topIssues" class="mini-issues"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="rside-spacer"></div>
+    <div class="rside-foot">Admin console</div>
+  </div>
+
+</div>
+
+<!-- Create/Edit User drawer -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="userDrawer">
+  <button class="drawer-close" id="closeDrawerBtn" type="button">✕</button>
+  <h3 id="formTitle">Create New User</h3>
+  <form id="createForm">
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="newUsername" placeholder="username" required/>
+      <div id="usernameError" class="form-error hidden"></div>
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="newEmail" placeholder="email@domain.com" required/>
+      <div id="emailError" class="form-error hidden"></div>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="newPassword" placeholder="Password"/>
+      <div id="passwordError" class="form-error hidden"></div>
+    </div>
+    <div class="field">
+      <label>Role</label>
+      <select id="newRole"><option value="USER">USER</option><option value="ADMIN">ADMIN</option></select>
+    </div>
+    <button id="createBtn" type="submit" class="btn" style="width:100%;margin-top:18px;justify-content:center;">Create</button>
+  </form>
+  <div id="createSuccess" class="form-success hidden">User created successfully.</div>
+</div>
+
+<script>
+  const API = '';
+  let editingUserId   = null;
+  let editingUserName = null;
+  let pendingEditId   = null;
+
+  async function authFetch(path, opts = {}) {
+    opts.credentials = 'include';
+    opts.headers = { 'Content-Type': 'application/json' };
+    const res = await fetch(API + path, opts);
+    let data;
+    try { data = await res.json(); } catch { data = {}; }
+    if (!res.ok) {
+      const errorMsg = data?.error || 'HTTP ' + res.status;
+      throw new Error(errorMsg);
+    }
+    return data;
+  }
+
+  function clearMessages() {
+    document.getElementById('usernameError').classList.add('hidden');
+    document.getElementById('emailError').classList.add('hidden');
+    document.getElementById('passwordError').classList.add('hidden');
+    document.getElementById('createSuccess').classList.add('hidden');
+  }
+
+  function clearRowHighlight(){
+    document.querySelectorAll('#usersTableBody tr.editing-row').forEach(r => r.classList.remove('editing-row'));
+  }
+
+  function highlightRow(id){
+    clearRowHighlight();
+    const row = document.querySelector(`#usersTableBody tr[data-row-id="${id}"]`);
+    if(row) row.classList.add('editing-row');
+  }
+
+  function setFormMode(mode){ // 'create' | 'update'
+    const btn        = document.getElementById('createBtn');
+    const title      = document.getElementById('formTitle');
+    const passwordEl = document.getElementById('newPassword');
+
+    if(mode==='update'){
+      btn.textContent = 'Save Update';
+      if (title){
+        const label = editingUserName || editingUserId || '';
+        title.textContent = label ? `Edit User (${label})` : 'Edit User';
       }
-      return data;
-    }
-
-    function clearMessages() {
-      document.getElementById('usernameError').classList.add('d-none');
-      document.getElementById('emailError').classList.add('d-none');
-      document.getElementById('passwordError').classList.add('d-none');
-      document.getElementById('createSuccess').classList.add('d-none');
-    }
-
-    function clearRowHighlight(){
-      document
-        .querySelectorAll('#usersTableBody tr.editing-row')
-        .forEach(r => r.classList.remove('editing-row'));
-    }
-
-    function highlightRow(id){
+      if (passwordEl) passwordEl.placeholder = 'Leave blank to keep password';
+    }else{
+      editingUserId   = null;
+      editingUserName = null;
+      btn.textContent = 'Create';
+      document.getElementById('createForm').reset();
       clearRowHighlight();
-      const row = document.querySelector(`#usersTableBody tr[data-row-id="${id}"]`);
-      if(row) row.classList.add('editing-row');
+      if (title) title.textContent = 'Create New User';
+      if (passwordEl) passwordEl.placeholder = 'Password';
     }
+    clearMessages();
+  }
 
-    function setFormMode(mode){ // 'create' | 'update'
-      const btn        = document.getElementById('createBtn');
-      const title      = document.getElementById('formTitle');
-      const passwordEl = document.getElementById('newPassword');
+  function avatarColor(seed){
+    const colors = ['var(--violet)','var(--peach)','var(--blue)','var(--mint)','var(--pink)'];
+    let h = 0; for (let i=0;i<seed.length;i++) h = (h*31 + seed.charCodeAt(i)) % colors.length;
+    return colors[h];
+  }
 
-      if(mode==='update'){
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-primary');
-        btn.textContent = 'Save Update';
-        if (title){
-          const label = editingUserName || editingUserId || '';
-          title.textContent = label ? `Edit User (${label})` : 'Edit User';
-        }
-        if (passwordEl){
-          passwordEl.placeholder = 'Leave blank to keep password';
-        }
-      }else{
-        editingUserId   = null;
-        editingUserName = null;
-        btn.classList.remove('btn-primary');
-        btn.classList.add('btn-success');
-        btn.textContent = 'Create';
-        document.getElementById('createForm').reset();
-        clearRowHighlight();
-        if (title) title.textContent = 'Create New User';
-        if (passwordEl){
-          passwordEl.placeholder = 'Password';
-        }
-      }
-      clearMessages();
-    }
+  async function loadUsers() {
+    try {
+      const users = await authFetch('/users', { method: 'GET' });
+      const tbody = document.getElementById('usersTableBody');
+      tbody.innerHTML = '';
 
-    async function loadUsers() {
-      try {
-        const users = await authFetch('/users', { method: 'GET' });
-        const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = '';
+      users.forEach(u => {
+        const initials = (u.username || '?').slice(0,2).toUpperCase();
+        const tr = document.createElement('tr');
+        tr.dataset.rowId = u.id;
+        if (editingUserId && u.id === editingUserId) tr.classList.add('editing-row');
 
-        users.forEach(u => {
-          const tr = document.createElement('tr');
-          tr.dataset.rowId = u.id;
-          if (editingUserId && u.id === editingUserId) tr.classList.add('editing-row');
-
-          tr.innerHTML = `
-            <td>${u.id}</td>
-            <td class="user-username cell-like" data-id="${u.id}">${u.username}</td>
-            <td class="user-email cell-like" data-id="${u.id}">
-              <span id="email-display-${u.id}">${u.email}</span>
-              <button class="btn btn-link p-0 ms-1 reveal-email" data-id="${u.id}" style="font-size:0.72rem;vertical-align:baseline;opacity:0.6">reveal</button>
-            </td>
-            <td class="user-role cell-like" data-id="${u.id}">${u.role}</td>
-            <td class="d-flex gap-2">
-              <button class="btn btn-sm btn-primary edit-in-form" data-id="${u.id}">Edit</button>
-              <button class="btn btn-sm btn-danger delete-btn" data-id="${u.id}">Delete</button>
-            </td>`;
-          tbody.appendChild(tr);
-        });
-
-        attachHandlers(users);
-      } catch (e) {
-        alert('Error loading users: ' + e);
-      }
-    }
-
-    function attachHandlers(cachedUsers) {
-      // Edit → fetch full user detail (unmasked email) then populate form
-      document.querySelectorAll('.edit-in-form').forEach(btn => {
-        btn.onclick = async () => {
-          const id = +btn.dataset.id;
-          pendingEditId = id;
-          let u;
-          try {
-            u = await authFetch(`/users/${id}`, { method: 'GET' });
-          } catch (err) {
-            if (pendingEditId === id) alert('Could not load user: ' + err.message);
-            return;
-          }
-          if (pendingEditId !== id) return; // superseded by a later edit click
-
-          document.getElementById('newUsername').value = u.username;
-          document.getElementById('newEmail').value    = u.email;
-          document.getElementById('newRole').value     = u.role;
-          document.getElementById('newPassword').value = '';
-
-          editingUserId   = id;
-          editingUserName = u.username;
-          setFormMode('update');
-          highlightRow(id);
-
-          document.getElementById('createForm')
-                  .scrollIntoView({behavior:'smooth', block:'center'});
-        };
+        tr.innerHTML = `
+          <td><div class="u-cell"><div class="u-ava" style="background:${avatarColor(u.username||String(u.id))}">${initials}</div>${u.username}</div></td>
+          <td><span id="email-display-${u.id}">${u.email}</span> <button class="reveal-lnk reveal-email" data-id="${u.id}">reveal</button></td>
+          <td><span class="role-badge ${u.role === 'ADMIN' ? 'role-admin' : 'role-user'}">${u.role}</span></td>
+          <td><span class="icon-btn edit-in-form" data-id="${u.id}">✎</span><span class="icon-btn delete-btn" data-id="${u.id}">🗑</span></td>`;
+        tbody.appendChild(tr);
       });
 
-      // Reveal → fetch full user detail and replace masked email in table
-      document.querySelectorAll('.reveal-email').forEach(btn => {
-        btn.onclick = async () => {
-          const id = +btn.dataset.id;
-          try {
-            const u = await authFetch(`/users/${id}`, { method: 'GET' });
-            document.getElementById(`email-display-${id}`).textContent = u.email;
-            btn.remove();
-          } catch (err) {
-            alert('Could not reveal email: ' + err.message);
-          }
-        };
-      });
-
-      // Delete
-      document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.onclick = async () => {
-          if (!confirm('Delete this user?')) return;
-          try {
-            const id = +btn.dataset.id;
-            await authFetch(`/users/${id}`, { method: 'DELETE' });
-            if (editingUserId === id) setFormMode('create');
-            loadUsers();
-          } catch (err) {
-            alert('❌ Delete failed: ' + err.message);
-          }
-        };
-      });
+      attachHandlers(users);
+      updateOverviewStats(users);
+    } catch (e) {
+      alert('Error loading users: ' + e);
     }
+  }
 
-    /**
-     * Validates password against backend rules (ValidationPatterns.java)
-     * @param {string} password - The password to validate
-     * @returns {object} - { valid: boolean, message: string }
-     */
-    function validatePassword(password) {
-      // Backend requirements from ValidationPatterns.PASSWORD_PATTERN:
-      // - At least 8 characters
-      // - At least one lowercase letter
-      // - At least one uppercase letter
-      // - At least one digit
-      // - At least one special character
+  function updateOverviewStats(users){
+    const total = users.length;
+    const admins = users.filter(u => u.role === 'ADMIN').length;
+    const pending = users.filter(u => u.verified === false).length;
+    document.getElementById('userCountBadge').textContent = total;
+    document.getElementById('statAdmins').textContent = admins;
+    document.getElementById('statPending').textContent = pending;
+    document.getElementById('statRateLimits').textContent = 'N/A'; // see note: not currently logged anywhere in the backend
+    document.getElementById('heroHeadline').textContent = `${total} total users · ${admins} admin${admins===1?'':'s'}`;
+    const pct = total ? Math.round((admins/total)*100) : 0;
+    document.getElementById('heroBarFill').style.width = pct + '%';
+    document.getElementById('heroBarPct').textContent = pct + '% admin coverage';
+  }
 
-      if (password.length < 8) {
-        return {
-          valid: false,
-          message: 'Password must be at least 8 characters long.'
-        };
-      }
-
-      if (!/[a-z]/.test(password)) {
-        return {
-          valid: false,
-          message: 'Password must contain at least one lowercase letter.'
-        };
-      }
-
-      if (!/[A-Z]/.test(password)) {
-        return {
-          valid: false,
-          message: 'Password must contain at least one uppercase letter.'
-        };
-      }
-
-      if (!/\d/.test(password)) {
-        return {
-          valid: false,
-          message: 'Password must contain at least one digit.'
-        };
-      }
-
-      if (!/[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>/~`]/.test(password)) {
-        return {
-          valid: false,
-          message: 'Password must contain at least one special character (!@#$%^&* etc.).'
-        };
-      }
-
-      return { valid: true, message: '' };
-    }
-
-    // Create / Update submit
-    document.getElementById('createForm').onsubmit = async (e) => {
-      e.preventDefault();
-      clearMessages();
-
-      const usernameField = document.getElementById('newUsername');
-      const emailField    = document.getElementById('newEmail');
-      const passwordField = document.getElementById('newPassword');
-      const roleField     = document.getElementById('newRole');
-      const usernameError = document.getElementById('usernameError');
-      const emailError    = document.getElementById('emailError');
-      const passwordError = document.getElementById('passwordError');
-      const successBox    = document.getElementById('createSuccess');
-
-      const username = usernameField.value.trim();
-      const email    = emailField.value.trim();
-      const role     = roleField.value;
-      const password = passwordField.value;
-
-      // Validate password if provided (required for create, optional for update)
-      if (password) {
-        const passwordValidation = validatePassword(password);
-        if (!passwordValidation.valid) {
-          passwordError.textContent = passwordValidation.message;
-          passwordError.classList.remove('d-none');
+  function attachHandlers(cachedUsers) {
+    document.querySelectorAll('.edit-in-form').forEach(btn => {
+      btn.onclick = async () => {
+        const id = +btn.dataset.id;
+        pendingEditId = id;
+        let u;
+        try {
+          u = await authFetch(`/users/${id}`, { method: 'GET' });
+        } catch (err) {
+          if (pendingEditId === id) alert('Could not load user: ' + err.message);
           return;
         }
-      } else if (!editingUserId) {
-        // Password is required when creating a new user
-        passwordError.textContent = 'Password is required when creating a new user.';
-        passwordError.classList.remove('d-none');
+        if (pendingEditId !== id) return;
+
+        document.getElementById('newUsername').value = u.username;
+        document.getElementById('newEmail').value    = u.email;
+        document.getElementById('newRole').value     = u.role;
+        document.getElementById('newPassword').value = '';
+
+        editingUserId   = id;
+        editingUserName = u.username;
+        setFormMode('update');
+        highlightRow(id);
+        document.getElementById('openDrawerBtn').click();
+      };
+    });
+
+    document.querySelectorAll('.reveal-email').forEach(btn => {
+      btn.onclick = async () => {
+        const id = +btn.dataset.id;
+        try {
+          const u = await authFetch(`/users/${id}`, { method: 'GET' });
+          document.getElementById(`email-display-${id}`).textContent = u.email;
+          btn.remove();
+        } catch (err) {
+          alert('Could not reveal email: ' + err.message);
+        }
+      };
+    });
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.onclick = async () => {
+        if (!confirm('Delete this user?')) return;
+        try {
+          const id = +btn.dataset.id;
+          await authFetch(`/users/${id}`, { method: 'DELETE' });
+          if (editingUserId === id) setFormMode('create');
+          loadUsers();
+        } catch (err) {
+          alert('Delete failed: ' + err.message);
+        }
+      };
+    });
+  }
+
+  function validatePassword(password) {
+    if (password.length < 8) return { valid:false, message:'Password must be at least 8 characters long.' };
+    if (!/[a-z]/.test(password)) return { valid:false, message:'Password must contain at least one lowercase letter.' };
+    if (!/[A-Z]/.test(password)) return { valid:false, message:'Password must contain at least one uppercase letter.' };
+    if (!/\d/.test(password)) return { valid:false, message:'Password must contain at least one digit.' };
+    if (!/[@$!%*?&#^()_+\-=\[\]{};':"\\|,.<>/~`]/.test(password)) return { valid:false, message:'Password must contain at least one special character (!@#$%^&* etc.).' };
+    return { valid:true, message:'' };
+  }
+
+  document.getElementById('createForm').onsubmit = async (e) => {
+    e.preventDefault();
+    clearMessages();
+
+    const usernameField = document.getElementById('newUsername');
+    const emailField    = document.getElementById('newEmail');
+    const passwordField = document.getElementById('newPassword');
+    const roleField     = document.getElementById('newRole');
+    const usernameError = document.getElementById('usernameError');
+    const emailError    = document.getElementById('emailError');
+    const passwordError = document.getElementById('passwordError');
+    const successBox    = document.getElementById('createSuccess');
+
+    const username = usernameField.value.trim();
+    const email    = emailField.value.trim();
+    const role     = roleField.value;
+    const password = passwordField.value;
+
+    if (password) {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.valid) {
+        passwordError.textContent = passwordValidation.message;
+        passwordError.classList.remove('hidden');
+        return;
+      }
+    } else if (!editingUserId) {
+      passwordError.textContent = 'Password is required when creating a new user.';
+      passwordError.classList.remove('hidden');
+      return;
+    }
+
+    try {
+      const users = await authFetch('/users', { method: 'GET' });
+      const lowerU = username.toLowerCase();
+
+      const usernameTaken = users.some(u =>
+        (editingUserId ? u.id !== editingUserId : true) &&
+        (u.username||'').toLowerCase() === lowerU
+      );
+
+      if (usernameTaken){
+        usernameError.textContent = 'Username already exists.';
+        usernameError.classList.remove('hidden');
         return;
       }
 
-      try {
-        const users = await authFetch('/users', { method: 'GET' });
-        const lowerU = username.toLowerCase();
-
-        // username duplicate check (emails are masked in list, so email check is server-side)
-        const usernameTaken = users.some(u =>
-          (editingUserId ? u.id !== editingUserId : true) &&
-          (u.username||'').toLowerCase() === lowerU
-        );
-
-        if (usernameTaken){
-          usernameError.textContent = 'Username already exists.';
-          usernameError.classList.remove('d-none');
-          return;
-        }
-
-        if (editingUserId){ // update existing user
-          const payload = { username, email, role };
-          if (password) payload.password = password;
-          await authFetch(`/users/${editingUserId}`, {
-            method: 'PUT',
-            body: JSON.stringify(payload)
-          });
-          successBox.textContent = 'User updated successfully.';
-          successBox.classList.remove('d-none');
-          setFormMode('create');
-        }else{ // create new user
-          await authFetch('/users', {
-            method: 'POST',
-            body: JSON.stringify({ username, email, password, role })
-          });
-          successBox.textContent = 'User created successfully.';
-          successBox.classList.remove('d-none');
-          e.target.reset();
-        }
-
-        loadUsers();
-      } catch (err) {
-        const msg = (err.message || '').toLowerCase();
-        let shown = false;
-        if (msg.includes('username')) {
-          usernameError.textContent = 'Username already exists.';
-          usernameError.classList.remove('d-none');
-          shown = true;
-        }
-        if (msg.includes('email')) {
-          emailError.textContent = 'Email already in use.';
-          emailError.classList.remove('d-none');
-          shown = true;
-        }
-        if (msg.includes('password')) {
-          passwordError.textContent = err.message;
-          passwordError.classList.remove('d-none');
-          shown = true;
-        }
-        if (!shown) {
-          // Show generic error in the email field (general error location)
-          emailError.textContent = editingUserId
-            ? 'Failed to update user.'
-            : 'Failed to create user.';
-          emailError.classList.remove('d-none');
-        }
+      if (editingUserId){
+        const payload = { username, email, role };
+        if (password) payload.password = password;
+        await authFetch(`/users/${editingUserId}`, { method:'PUT', body: JSON.stringify(payload) });
+        successBox.textContent = 'User updated successfully.';
+        successBox.classList.remove('hidden');
+        setFormMode('create');
+      }else{
+        await authFetch('/users', { method:'POST', body: JSON.stringify({ username, email, password, role }) });
+        successBox.textContent = 'User created successfully.';
+        successBox.classList.remove('hidden');
+        e.target.reset();
       }
-    };
 
-    // Initial load
-    loadUsers();
-    
-    // System Health functionality
-    async function loadHealthData() {
-      try {
-        // Fetch health data from actuator endpoint using the existing authFetch helper
-        const healthData = await authFetch('/actuator/health', { method: 'GET' });
-        
-        // Update overall application status
-        const appStatusEl = document.getElementById('appStatus');
-        const status = healthData.status || 'UNKNOWN';
-        appStatusEl.textContent = status;
-        
-        // Update card header based on overall status
-        const cardHeader = document.getElementById('healthCardHeader');
-        cardHeader.classList.remove('bg-success', 'bg-danger', 'bg-warning', 'bg-secondary');
-        
-        // Set color based on status
-        appStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
-        if (status === 'UP') {
-          appStatusEl.classList.add('text-success');
-          cardHeader.classList.add('bg-success');
-        } else if (status === 'DOWN') {
-          appStatusEl.classList.add('text-danger');
-          cardHeader.classList.add('bg-danger');
-        } else if (status === 'OUT_OF_SERVICE') {
-          appStatusEl.classList.add('text-warning');
-          cardHeader.classList.add('bg-warning');
-        } else {
-          appStatusEl.classList.add('text-muted');
-          cardHeader.classList.add('bg-secondary');
-        }
-        
-        // Update database status
-        const dbStatusEl = document.getElementById('dbStatus');
-        let dbStatus = 'UNKNOWN';
-        let dbStatusClass = 'text-muted';
-        
-        if (healthData.components && healthData.components.db) {
-          dbStatus = healthData.components.db.status || 'UNKNOWN';
-          if (dbStatus === 'UP') {
-            dbStatusClass = 'text-success';
-          } else if (dbStatus === 'DOWN') {
-            dbStatusClass = 'text-danger';
-          } else if (dbStatus === 'OUT_OF_SERVICE') {
-            dbStatusClass = 'text-warning';
-          }
-        }
-        
-        dbStatusEl.textContent = dbStatus;
-        dbStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
-        dbStatusEl.classList.add(dbStatusClass);
-        
-        // Update last updated timestamp
-        const now = new Date();
-        document.getElementById('healthLastUpdated').textContent = now.toLocaleString();
-        
-        // Update health details
-        const healthDetailsEl = document.getElementById('healthDetailsText');
-        let detailsHtml = '<div class="small">';
-        
-        if (healthData.components) {
-          detailsHtml += '<strong>Components:</strong><br>';
-          Object.entries(healthData.components).forEach(([key, component]) => {
-            const componentStatus = component.status || 'UNKNOWN';
-            let badgeClass = 'bg-secondary';
-            if (componentStatus === 'UP') {
-              badgeClass = 'bg-success';
-            } else if (componentStatus === 'DOWN') {
-              badgeClass = 'bg-danger';
-            } else if (componentStatus === 'OUT_OF_SERVICE') {
-              badgeClass = 'bg-warning';
-            }
-            
-            // Create badge element safely using DOM manipulation to prevent XSS
-            const badge = document.createElement('span');
-            badge.className = `badge ${badgeClass} me-2 mb-1`;
-            badge.textContent = `${key}: ${componentStatus}`;
-            
-            // Temporarily append to a container
-            const tempDiv = document.createElement('div');
-            tempDiv.appendChild(badge);
-            detailsHtml += tempDiv.innerHTML;
-            
-            // Show database details if available
-            if (key === 'db' && component.details && component.details.database) {
-              const dbDetail = document.createElement('span');
-              dbDetail.className = 'text-muted ms-2';
-              dbDetail.textContent = 'Database: ' + component.details.database;
-              const tempDiv2 = document.createElement('div');
-              tempDiv2.appendChild(dbDetail);
-              detailsHtml += '<br>' + tempDiv2.innerHTML;
-            }
-          });
-        } else {
-          detailsHtml += '<span class="text-muted">No detailed component information available</span>';
-        }
-        
-        detailsHtml += '</div>';
-        healthDetailsEl.innerHTML = detailsHtml;
-        
-        // Hide error message
-        document.getElementById('healthError').classList.add('d-none');
-        
-      } catch (err) {
-        console.error('Error loading health data:', err);
-        
-        // Show error message
-        const errorEl = document.getElementById('healthError');
-        errorEl.textContent = 'Error loading health data: ' + (err.message || 'Unknown error');
-        errorEl.classList.remove('d-none');
-        
-        // Update status to show error - remove existing classes first
-        const appStatusEl = document.getElementById('appStatus');
-        appStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
-        appStatusEl.textContent = 'ERROR';
-        appStatusEl.classList.add('text-danger');
-        
-        const dbStatusEl = document.getElementById('dbStatus');
-        dbStatusEl.classList.remove('text-success', 'text-danger', 'text-warning', 'text-muted');
-        dbStatusEl.textContent = 'ERROR';
-        dbStatusEl.classList.add('text-danger');
+      loadUsers();
+    } catch (err) {
+      const msg = (err.message || '').toLowerCase();
+      let shown = false;
+      if (msg.includes('username')) { usernameError.textContent = 'Username already exists.'; usernameError.classList.remove('hidden'); shown = true; }
+      if (msg.includes('email')) { emailError.textContent = 'Email already in use.'; emailError.classList.remove('hidden'); shown = true; }
+      if (msg.includes('password')) { passwordError.textContent = err.message; passwordError.classList.remove('hidden'); shown = true; }
+      if (!shown) {
+        emailError.textContent = editingUserId ? 'Failed to update user.' : 'Failed to create user.';
+        emailError.classList.remove('hidden');
       }
     }
-    
-    // Load health data on page load
-    loadHealthData();
-    
-    // Refresh health data every 30 seconds
-    setInterval(loadHealthData, 30000);
+  };
 
-    // AI Summary functionality
-    document.getElementById('summaryForm').onsubmit = async (e) => {
-      e.preventDefault();
-      
-      const startTimeInput = document.getElementById('summaryStartTime').value;
-      const endTimeInput = document.getElementById('summaryEndTime').value;
-      const logLevel = document.getElementById('summaryLogLevel').value;
-      const actionType = document.getElementById('summaryActionType').value;
-      
-      // Convert local datetime to ISO8601 UTC format
-      const startTime = startTimeInput ? new Date(startTimeInput).toISOString() : null;
-      const endTime = endTimeInput ? new Date(endTimeInput).toISOString() : null;
-      
-      // Build query parameters
-      const params = new URLSearchParams();
-      if (startTime) params.append('startTime', startTime);
-      if (endTime) params.append('endTime', endTime);
-      if (logLevel) params.append('logLevel', logLevel);
-      if (actionType) params.append('actionType', actionType);
-      
-      // Show loading state
-      document.getElementById('summaryLoading').classList.remove('d-none');
-      document.getElementById('summaryResults').classList.add('d-none');
-      document.getElementById('summaryError').classList.add('d-none');
-      
-      try {
-        const response = await authFetch(`/api/v1/logs/summarize?${params}`, { method: 'GET' });
-        
-        // Update stats
-        document.getElementById('totalLogs').textContent = response.totalLogs || 0;
-        
-        // Format time range
-        const formatTime = (isoStr) => {
-          if (!isoStr) return 'Not specified';
-          const date = new Date(isoStr);
-          return date.toLocaleString();
-        };
-        const timeRangeText = `${formatTime(response.startTime)} - ${formatTime(response.endTime)}`;
-        document.getElementById('timeRange').textContent = timeRangeText;
-        
-        // Display log levels
-        const logLevelsEl = document.getElementById('logLevels');
-        if (response.logLevelStats && Object.keys(response.logLevelStats).length > 0) {
-          logLevelsEl.innerHTML = ''; // Clear previous content
-          Object.entries(response.logLevelStats).forEach(([level, count]) => {
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-secondary me-1';
-            badge.textContent = `${level}: ${count}`;
-            logLevelsEl.appendChild(badge);
-          });
-        } else {
-          logLevelsEl.textContent = 'No data';
-        }
-        
-        // Display summary text
-        document.getElementById('summaryText').textContent = response.summary || 'No summary available.';
-        
-        // Display action types
-        const actionTypesEl = document.getElementById('actionTypes');
-        const actionTypesSection = document.getElementById('actionTypesSection');
-        if (response.actionTypeStats && Object.keys(response.actionTypeStats).length > 0) {
-          actionTypesEl.innerHTML = ''; // Clear previous content
-          Object.entries(response.actionTypeStats).forEach(([action, count]) => {
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-info me-1';
-            badge.textContent = `${action}: ${count}`;
-            actionTypesEl.appendChild(badge);
-          });
-          actionTypesSection.classList.remove('d-none');
-        } else {
-          actionTypesSection.classList.add('d-none');
-        }
-        
-        // Display top issues
-        const topIssuesEl = document.getElementById('topIssues');
-        const topIssuesSection = document.getElementById('topIssuesSection');
-        if (response.topIssues && response.topIssues.length > 0) {
-          topIssuesEl.innerHTML = ''; // Clear previous content
-          response.topIssues.forEach(issue => {
-            const li = document.createElement('li');
-            li.textContent = issue;
-            topIssuesEl.appendChild(li);
-          });
-          topIssuesSection.classList.remove('d-none');
-        } else {
-          topIssuesSection.classList.add('d-none');
-        }
-        
-        // Show results
-        document.getElementById('summaryResults').classList.remove('d-none');
-        
-        // Scroll to results
-        document.getElementById('summaryResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-      } catch (err) {
-        const errorEl = document.getElementById('summaryError');
-        errorEl.textContent = 'Error generating summary: ' + (err.message || 'Unknown error');
-        errorEl.classList.remove('d-none');
-      } finally {
-        document.getElementById('summaryLoading').classList.add('d-none');
+  loadUsers();
+
+  // System Health
+  async function loadHealthData() {
+    try {
+      const healthData = await authFetch('/actuator/health', { method: 'GET' });
+      const status = healthData.status || 'UNKNOWN';
+      const up = status === 'UP';
+
+      const appStatusEl = document.getElementById('appStatus');
+      appStatusEl.innerHTML = `<span class="dot ${up?'up':'down'}"></span>${status}`;
+      document.getElementById('appStatusBar').className = 'status-fill ' + (up ? 'up' : 'down');
+
+      let dbStatus = 'UNKNOWN';
+      if (healthData.components && healthData.components.db) dbStatus = healthData.components.db.status || 'UNKNOWN';
+      const dbUp = dbStatus === 'UP';
+      document.getElementById('dbStatus').innerHTML = `<span class="dot ${dbUp?'up':'down'}"></span>${dbStatus}`;
+      document.getElementById('dbStatusBar').className = 'status-fill ' + (dbUp ? 'up' : 'down');
+
+      const now = new Date();
+      document.getElementById('healthLastUpdated').textContent = now.toLocaleTimeString();
+
+      const healthDetailsEl = document.getElementById('healthDetailsText');
+      healthDetailsEl.innerHTML = '';
+      if (healthData.components) {
+        Object.entries(healthData.components).forEach(([key, component]) => {
+          const row = document.createElement('div');
+          const b = document.createElement('b');
+          b.textContent = key + ': ';
+          row.appendChild(b);
+          row.appendChild(document.createTextNode(component.status || 'UNKNOWN'));
+          healthDetailsEl.appendChild(row);
+        });
       }
-    };
-  </script>
+
+      document.getElementById('healthError').classList.add('hidden');
+    } catch (err) {
+      console.error('Error loading health data:', err);
+      document.getElementById('healthError').textContent = 'Error loading health data: ' + (err.message || 'Unknown error');
+      document.getElementById('healthError').classList.remove('hidden');
+      document.getElementById('appStatus').innerHTML = '<span class="dot down"></span>ERROR';
+      document.getElementById('dbStatus').innerHTML = '<span class="dot down"></span>ERROR';
+      document.getElementById('appStatusBar').className = 'status-fill down';
+      document.getElementById('dbStatusBar').className = 'status-fill down';
+    }
+  }
+
+  loadHealthData();
+  setInterval(loadHealthData, 30000);
+
+  // Date-range calendar for the AI Summary filter — tracks real Date objects,
+  // not just decorative, so Generate Summary can send real ISO timestamps.
+  let summaryRangeStart = null, summaryRangeEnd = null;
+  (function buildCalendar(){
+    const container = document.getElementById('summaryCal');
+    const readout = document.getElementById('summaryRangeReadout');
+    const today = new Date();
+    let viewMonth = today.getMonth(), viewYear = today.getFullYear();
+
+    function render(){
+      const first = new Date(viewYear, viewMonth, 1);
+      const startOffset = (first.getDay()+6)%7;
+      const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+      const daysInPrev = new Date(viewYear, viewMonth, 0).getDate();
+      const monthName = first.toLocaleString('default',{month:'long'});
+
+      let html = `<div class="cal-head"><div class="m">${monthName} ${viewYear}</div><div class="cal-nav"><button type="button" data-dir="-1">‹</button><button type="button" data-dir="1">›</button></div></div>`;
+      html += '<div class="cal-grid">';
+      ['M','T','W','T','F','S','S'].forEach(d=>html+=`<div class="dow">${d}</div>`);
+      for(let i=0;i<startOffset;i++){ html += `<div class="day muted">${daysInPrev-startOffset+i+1}</div>`; }
+      for(let d=1; d<=daysInMonth; d++){
+        const cls=[];
+        const thisDate = new Date(viewYear,viewMonth,d).getTime();
+        if (viewYear===today.getFullYear() && viewMonth===today.getMonth() && d===today.getDate()) cls.push('today');
+        if (summaryRangeStart && thisDate===summaryRangeStart.getTime()) cls.push('range-start');
+        if (summaryRangeEnd && thisDate===summaryRangeEnd.getTime()) cls.push('range-end');
+        if (summaryRangeStart && summaryRangeEnd && thisDate>summaryRangeStart.getTime() && thisDate<summaryRangeEnd.getTime()) cls.push('in-range');
+        html += `<div class="day ${cls.join(' ')}" data-d="${d}">${d}</div>`;
+      }
+      container.innerHTML = html;
+
+      container.querySelectorAll('.cal-nav button').forEach(b=>{
+        b.onclick = ()=>{ viewMonth += parseInt(b.dataset.dir); if(viewMonth<0){viewMonth=11;viewYear--;} if(viewMonth>11){viewMonth=0;viewYear++;} render(); };
+      });
+      container.querySelectorAll('.day:not(.muted)').forEach(el=>{
+        el.onclick = ()=>{
+          const d = new Date(viewYear,viewMonth,parseInt(el.dataset.d));
+          if (!summaryRangeStart || (summaryRangeStart && summaryRangeEnd)){ summaryRangeStart=d; summaryRangeEnd=null; }
+          else if (d.getTime() < summaryRangeStart.getTime()){ summaryRangeEnd = summaryRangeStart; summaryRangeStart = d; }
+          else { summaryRangeEnd = d; }
+          render();
+          if (summaryRangeStart && summaryRangeEnd){
+            readout.innerHTML = `<b>${summaryRangeStart.toLocaleDateString()}</b> → <b>${summaryRangeEnd.toLocaleDateString()}</b>`;
+          } else if (summaryRangeStart){
+            readout.innerHTML = `<b>${summaryRangeStart.toLocaleDateString()}</b> → pick end date`;
+          }
+        };
+      });
+    }
+    render();
+  })();
+
+  // AI Summary
+  document.getElementById('generateSummaryBtn').addEventListener('click', async () => {
+    const logLevel = document.getElementById('summaryLogLevel').value;
+    const actionType = document.getElementById('summaryActionType').value;
+
+    const startTime = summaryRangeStart ? summaryRangeStart.toISOString() : null;
+    const endTime = summaryRangeEnd ? new Date(summaryRangeEnd.getTime() + 86399999).toISOString() : null; // include the full end day
+
+    const params = new URLSearchParams();
+    if (startTime) params.append('startTime', startTime);
+    if (endTime) params.append('endTime', endTime);
+    if (logLevel) params.append('logLevel', logLevel);
+    if (actionType) params.append('actionType', actionType);
+
+    document.getElementById('summaryLoading').classList.remove('hidden');
+    document.getElementById('summaryResults').classList.add('hidden');
+    document.getElementById('summaryError').classList.add('hidden');
+
+    try {
+      const response = await authFetch(`/api/v1/logs/summarize?${params}`, { method: 'GET' });
+
+      document.getElementById('totalLogs').textContent = response.totalLogs || 0;
+
+      const logLevelsEl = document.getElementById('logLevels');
+      logLevelsEl.innerHTML = '';
+      if (response.logLevelStats && Object.keys(response.logLevelStats).length > 0) {
+        Object.entries(response.logLevelStats).forEach(([level, count]) => {
+          const span = document.createElement('span');
+          span.textContent = `${level}: ${count}`;
+          logLevelsEl.appendChild(span);
+        });
+      } else {
+        logLevelsEl.textContent = 'No data';
+      }
+
+      document.getElementById('summaryText').textContent = response.summary || 'No summary available.';
+
+      const actionTypesEl = document.getElementById('actionTypes');
+      const actionTypesSection = document.getElementById('actionTypesSection');
+      actionTypesEl.innerHTML = '';
+      if (response.actionTypeStats && Object.keys(response.actionTypeStats).length > 0) {
+        Object.entries(response.actionTypeStats).forEach(([action, count]) => {
+          const span = document.createElement('span');
+          span.textContent = `${action}: ${count}`;
+          actionTypesEl.appendChild(span);
+        });
+        actionTypesSection.classList.remove('hidden');
+      } else {
+        actionTypesSection.classList.add('hidden');
+      }
+
+      const topIssuesEl = document.getElementById('topIssues');
+      const topIssuesSection = document.getElementById('topIssuesSection');
+      topIssuesEl.innerHTML = '';
+      if (response.topIssues && response.topIssues.length > 0) {
+        response.topIssues.forEach(issue => {
+          const li = document.createElement('li');
+          li.textContent = issue;
+          topIssuesEl.appendChild(li);
+        });
+        topIssuesSection.classList.remove('hidden');
+      } else {
+        topIssuesSection.classList.add('hidden');
+      }
+
+      document.getElementById('summaryResults').classList.remove('hidden');
+    } catch (err) {
+      document.getElementById('summaryError').textContent = 'Error generating summary: ' + (err.message || 'Unknown error');
+      document.getElementById('summaryError').classList.remove('hidden');
+    } finally {
+      document.getElementById('summaryLoading').classList.add('hidden');
+    }
+  });
+
+  // Create/Edit User drawer
+  (function(){
+    const drawer = document.getElementById('userDrawer');
+    const overlay = document.getElementById('drawerOverlay');
+    const open = ()=>{ drawer.classList.add('open'); overlay.classList.add('open'); };
+    const close = ()=>{ drawer.classList.remove('open'); overlay.classList.remove('open'); setFormMode('create'); };
+    document.getElementById('openDrawerBtn').addEventListener('click', open);
+    document.getElementById('closeDrawerBtn').addEventListener('click', close);
+    overlay.addEventListener('click', close);
+    document.getElementById('qtNewUser').addEventListener('click', open);
+  })();
+
+  // Quick tool: AI Summary — jump to the panel
+  document.getElementById('qtAiSummary').addEventListener('click', ()=>{
+    const panel = document.getElementById('aiPanel');
+    panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
+    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+
+  // Quick tool: Health — re-poll right now instead of waiting for the 30s auto-refresh
+  document.getElementById('qtHealth').addEventListener('click', ()=>{
+    loadHealthData();
+    const panel = document.getElementById('healthPanel');
+    panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
+    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+</script>
 </body>
 </html>
