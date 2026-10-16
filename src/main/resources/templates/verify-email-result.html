@@ -4,48 +4,57 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Email Verification – User Management</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; }
-    .container {
-      max-width: 400px;
-      margin: 80px auto;
-      padding: 24px;
-      background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      box-sizing: border-box;
+    *{box-sizing:border-box;}
+    html,body{margin:0;}
+    body{
+      font-family:'Plus Jakarta Sans',sans-serif; min-height:100vh;
+      display:flex; align-items:center; justify-content:center; padding:24px;
+      color:#1f2430;
+      background:
+        radial-gradient(at 8% 8%, rgba(139,124,240,.30) 0, transparent 42%),
+        radial-gradient(at 92% 15%, rgba(232,164,196,.30) 0, transparent 45%),
+        radial-gradient(at 50% 100%, rgba(187,192,186,.3) 0, transparent 50%),
+        #f3f0fa;
     }
-    h1 { text-align: center; margin-bottom: 24px; color: #333; }
-    .alert {
-      padding: 10px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      font-size: 14px;
+
+    .page-wrapper{ width:100%; max-width:380px; }
+    .brand{ display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:22px; }
+    .brand .mark{ width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#6d5bd0,#c8537a); }
+    .brand .wordmark{ font-size:15px; font-weight:800; }
+
+    .container{
+      padding:28px 26px; background:#fff; border-radius:18px;
+      box-shadow:0 20px 50px rgba(80,60,110,.16); border:1px solid #efedf4;
+      box-sizing:border-box;
     }
-    .alert-danger { background: #fdecea; color: #b71c1c; }
-    .alert-success { background: #e8f5e9; color: #2e7d32; }
-    .links {
-      text-align: center;
-      margin-top: 16px;
-    }
-    .links a {
-      color: #4a90e2;
-      text-decoration: none;
-      margin: 0 8px;
-      font-size: 14px;
-    }
-    .links a:hover { text-decoration: underline; }
+
+    h1{ text-align:center; margin:0 0 20px; font-size:19px; font-weight:800; letter-spacing:-.01em; }
+
+    .alert{ padding:10px 12px; border-radius:10px; margin-bottom:14px; font-size:12.5px; }
+    .alert-danger{ background:#f7e0e6; color:#c8537a; }
+    .alert-success{ background:#d7f0e3; color:#2f9e6b; }
+
+    .links{ text-align:center; margin-top:4px; }
+    .links a{ color:#6d5bd0; text-decoration:none; font-size:12.5px; font-weight:600; }
+    .links a:hover{ text-decoration:underline; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Email Verification</h1>
+  <div class="page-wrapper">
+    <div class="brand"><div class="mark"></div><div class="wordmark">UserMgmt</div></div>
 
-    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
-    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div class="container">
+      <h1>Email Verification</h1>
 
-    <div class="links">
-      <a th:href="@{/login}">Back to login</a>
+      <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+      <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+
+      <div class="links">
+        <a th:href="@{/login}">Back to login</a>
+      </div>
     </div>
   </div>
 </body>
