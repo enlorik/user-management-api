@@ -198,13 +198,59 @@
     .form-error{ color:#842029; background:#f8d7da; border:1px solid #f5c2c7; border-radius:4px; padding:6px 10px; margin-top:4px; font-size:.82rem; }
     .form-success{ color:#0f5132; background:#d1e7dd; border:1px solid #badbcc; border-radius:4px; padding:10px 15px; margin-top:14px; font-size:.9rem; }
 
+    /* ---------- Mobile nav triggers (hidden on desktop) ---------- */
+    .mobile-nav-btn{ display:none; width:36px; height:36px; border-radius:10px; border:1px solid var(--line); background:#fff; align-items:center; justify-content:center; font-size:15px; cursor:pointer; flex:none; color:var(--text); }
+    .topbar-actions{ display:flex; gap:8px; align-items:center; }
+    .side-close, .rside-close{ display:none; position:absolute; top:16px; right:16px; width:28px; height:28px; border-radius:9px; border:1px solid var(--line); background:#fff; cursor:pointer; z-index:1; }
+
     @media (max-width:900px){
       body{ padding:0; }
-      .shell{ min-height:100vh; grid-template-columns:1fr; max-width:100%; border-radius:0; }
-      .side, .rside{ display:none; }
+      .shell{ height:auto; min-height:100vh; overflow:visible; grid-template-columns:1fr; max-width:100%; border-radius:0; }
       .main{ height:auto; overflow:visible; }
       .table-scroll{ overflow:visible; }
       .drawer{ width:88%; }
+
+      .mobile-nav-btn{ display:flex; }
+
+      /* left + right sidebars become off-canvas drawers, reusing the
+         same slide-in mechanism as the Create/Edit User drawer */
+      .side{
+        position:fixed; top:0; left:0; height:100%; width:85%; max-width:320px;
+        transform:translateX(-100%); transition:transform .3s cubic-bezier(.34,1.1,.64,1);
+        z-index:41; background:var(--sidebar-bg); backdrop-filter:none; -webkit-backdrop-filter:none;
+        border-right:none; box-shadow:10px 0 40px rgba(53,47,69,.18); overflow-y:auto;
+      }
+      .side.open{ transform:translateX(0); }
+      .rside{
+        position:fixed; top:0; right:0; height:100%; width:85%; max-width:360px;
+        transform:translateX(100%); transition:transform .3s cubic-bezier(.34,1.1,.64,1);
+        z-index:41; background:#fff; backdrop-filter:none; -webkit-backdrop-filter:none;
+        border-left:none; box-shadow:-10px 0 40px rgba(53,47,69,.18); overflow-y:auto;
+      }
+      .rside.open{ transform:translateX(0); }
+      .side-close, .rside-close{ display:flex; align-items:center; justify-content:center; }
+
+      .side-overlay, .rside-overlay{ position:fixed; inset:0; background:rgba(40,30,50,.35); opacity:0; pointer-events:none; transition:opacity .25s; z-index:40; }
+      .side-overlay.open, .rside-overlay.open{ opacity:1; pointer-events:auto; }
+
+      /* users table -> stacked cards */
+      .table-scroll table.u-table thead{ display:none; }
+      .table-scroll table.u-table, .table-scroll table.u-table tbody,
+      .table-scroll table.u-table tr, .table-scroll table.u-table td{ display:block; width:auto; }
+      .table-scroll table.u-table tr{ background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+      .table-scroll table.u-table td{ border-top:none; padding:6px 0; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+      .table-scroll table.u-table td:first-child{ justify-content:flex-start; padding-top:0; }
+      .table-scroll table.u-table td:not(:first-child)::before{ content:attr(data-label); font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+
+      /* calendar touch targets */
+      .cal-nav button{ width:30px; height:30px; }
+      .cal-grid .day{ min-height:36px; font-size:11px; }
+    }
+
+    @media (max-width:480px){
+      .main{ padding:14px 16px; }
+      .hero{ padding:14px 16px; }
+      .stat-row{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -214,6 +260,7 @@
 
   <!-- LEFT SIDEBAR -->
   <div class="side">
+    <button class="side-close" id="closeSideBtn" type="button" aria-label="Close menu">✕</button>
     <div class="brand">
       <div class="mark"></div>
       <div><div class="wordmark">UserMgmt</div><div class="sub">Admin Console</div></div>
@@ -262,7 +309,13 @@
   <!-- MAIN -->
   <div class="main">
     <div class="topbar">
+      <div class="topbar-actions">
+        <button class="mobile-nav-btn" id="openSideBtn" type="button" aria-label="Open menu">☰</button>
+      </div>
       <div><h1>Admin Dashboard</h1><div class="subtext">Users, AI log summary, and system health.</div></div>
+      <div class="topbar-actions">
+        <button class="mobile-nav-btn" id="openRsideBtn" type="button" aria-label="Open AI summary">✦</button>
+      </div>
     </div>
 
     <div class="hero-frame">
@@ -295,6 +348,7 @@
 
   <!-- RIGHT SIDEBAR -->
   <div class="rside">
+    <button class="rside-close" id="closeRsideBtn" type="button" aria-label="Close AI summary">✕</button>
     <div class="rpanel" id="aiPanel">
       <h4>✦ AI Log Summary</h4>
       <p class="sub">Pick a range, filters, then generate.</p>
@@ -356,6 +410,10 @@
   </div>
 
 </div>
+
+<!-- Mobile nav/AI drawer overlays -->
+<div class="side-overlay" id="sideOverlay"></div>
+<div class="rside-overlay" id="rsideOverlay"></div>
 
 <!-- Create/Edit User drawer -->
 <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -467,9 +525,9 @@
 
         tr.innerHTML = `
           <td><div class="u-cell"><div class="u-ava" style="background:${avatarColor(u.username||String(u.id))}">${initials}</div>${u.username}</div></td>
-          <td><span id="email-display-${u.id}">${u.email}</span> <button class="reveal-lnk reveal-email" data-id="${u.id}">reveal</button></td>
-          <td><span class="role-badge ${u.role === 'ADMIN' ? 'role-admin' : 'role-user'}">${u.role}</span></td>
-          <td><span class="icon-btn edit-in-form" data-id="${u.id}">✎</span><span class="icon-btn delete-btn" data-id="${u.id}">🗑</span></td>`;
+          <td data-label="Email"><span id="email-display-${u.id}">${u.email}</span> <button class="reveal-lnk reveal-email" data-id="${u.id}">reveal</button></td>
+          <td data-label="Role"><span class="role-badge ${u.role === 'ADMIN' ? 'role-admin' : 'role-user'}">${u.role}</span></td>
+          <td data-label="Actions"><span class="icon-btn edit-in-form" data-id="${u.id}">✎</span><span class="icon-btn delete-btn" data-id="${u.id}">🗑</span></td>`;
         tbody.appendChild(tr);
       });
 
@@ -820,19 +878,45 @@
     document.getElementById('qtNewUser').addEventListener('click', open);
   })();
 
-  // Quick tool: AI Summary — jump to the panel
+  function flashAndScroll(panel){
+    panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
+    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+
+  // Mobile left/right off-canvas nav drawers (reuses the Create/Edit User
+  // drawer's slide-in mechanism, applied to .side and .rside at <=900px)
+  const isMobileNav = () => window.matchMedia('(max-width:900px)').matches;
+  const sideEl      = document.querySelector('.side');
+  const rsideEl     = document.querySelector('.rside');
+  const sideOverlay = document.getElementById('sideOverlay');
+  const rsideOverlay= document.getElementById('rsideOverlay');
+
+  function openSideDrawer(){ sideEl.classList.add('open'); sideOverlay.classList.add('open'); }
+  function closeSideDrawer(){ sideEl.classList.remove('open'); sideOverlay.classList.remove('open'); }
+  function openRsideDrawer(){ rsideEl.classList.add('open'); rsideOverlay.classList.add('open'); }
+  function closeRsideDrawer(){ rsideEl.classList.remove('open'); rsideOverlay.classList.remove('open'); }
+
+  document.getElementById('openSideBtn').addEventListener('click', openSideDrawer);
+  document.getElementById('closeSideBtn').addEventListener('click', closeSideDrawer);
+  sideOverlay.addEventListener('click', closeSideDrawer);
+
+  document.getElementById('openRsideBtn').addEventListener('click', openRsideDrawer);
+  document.getElementById('closeRsideBtn').addEventListener('click', closeRsideDrawer);
+  rsideOverlay.addEventListener('click', closeRsideDrawer);
+
+  // Quick tool: AI Summary — on mobile the panel lives in the right drawer,
+  // so open that drawer first; on desktop it's already visible, just jump to it
   document.getElementById('qtAiSummary').addEventListener('click', ()=>{
     const panel = document.getElementById('aiPanel');
-    panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
-    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+    if (isMobileNav()){ closeSideDrawer(); openRsideDrawer(); }
+    flashAndScroll(panel);
   });
 
-  // Quick tool: Health — re-poll right now instead of waiting for the 30s auto-refresh
+  // Quick tool: Health — re-poll right now instead of waiting for the 30s auto-refresh.
+  // The Health panel lives inside .side itself, so no drawer-switch is needed on mobile.
   document.getElementById('qtHealth').addEventListener('click', ()=>{
     loadHealthData();
-    const panel = document.getElementById('healthPanel');
-    panel.classList.remove('flash'); void panel.offsetWidth; panel.classList.add('flash');
-    panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+    flashAndScroll(document.getElementById('healthPanel'));
   });
 </script>
 </body>
