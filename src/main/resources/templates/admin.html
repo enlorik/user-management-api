@@ -123,9 +123,15 @@
     .qt-head{ display:flex; justify-content:space-between; align-items:baseline; flex:none; }
     .qt-head span:first-child{ font-size:12.5px; font-weight:700; }
     .qt-grid{ flex:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin-top:10px; }
-    .qt-grid .qt{ min-width:0; overflow:hidden; background:#f2eff6; border:1px solid var(--line); border-radius:12px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; text-align:center; cursor:pointer; aspect-ratio:1/1; }
+    .qt-grid .qt{ min-width:0; overflow:hidden; background:#f2eff6; border:1px solid var(--line); border-radius:12px; padding:10px 4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; text-align:center; cursor:pointer; }
     .qt-grid .qt .chip{ width:24px; height:24px; border-radius:7px; margin:0; display:flex; align-items:center; justify-content:center; font-size:11px; flex:none; }
     .qt-grid .qt .lb{ font-size:9px; font-weight:700; color:var(--text); line-height:1.2; }
+    .qt-grid .qt .qt-sub{ font-size:8px; font-weight:700; color:var(--muted); line-height:1.2; display:flex; align-items:center; gap:3px; }
+    .qt-grid .qt .qt-sub .dot{ width:5px; height:5px; border-radius:50%; flex:none; background:var(--muted); }
+    .qt-grid .qt .qt-sub .dot.up{ background:var(--mint); }
+    .qt-grid .qt .qt-sub .dot.down{ background:var(--pink); }
+    .qt-grid .qt .qt-sub.ok{ color:var(--mint); }
+    .qt-grid .qt .qt-sub.bad{ color:var(--pink); }
     @keyframes rpanelFlash{ 0%{ box-shadow:0 0 0 0 rgba(109,91,208,0); } 30%{ box-shadow:0 0 0 2px rgba(109,91,208,.45); } 100%{ box-shadow:0 0 0 0 rgba(109,91,208,0); } }
     .rpanel.flash{ animation: rpanelFlash .7s ease; }
 
@@ -276,8 +282,8 @@
     <div class="qt-head"><span>Quick tools</span></div>
     <div class="qt-grid">
       <div class="qt" id="qtNewUser"><div class="chip" style="background:var(--violet-bg);color:var(--violet)">＋</div><div class="lb">New User</div></div>
-      <div class="qt" id="qtAiSummary"><div class="chip" style="background:var(--blue-bg);color:var(--blue)">✦</div><div class="lb">AI Summary</div></div>
-      <div class="qt" id="qtHealth"><div class="chip" style="background:var(--mint-bg);color:var(--mint)">♥</div><div class="lb">Health</div></div>
+      <div class="qt" id="qtAiSummary"><div class="chip" style="background:var(--blue-bg);color:var(--blue)">✦</div><div class="lb">AI Summary</div><div class="qt-sub" id="qtAiStat">—</div></div>
+      <div class="qt" id="qtHealth"><div class="chip" style="background:var(--mint-bg);color:var(--mint)">♥</div><div class="lb">Health</div><div class="qt-sub" id="qtHealthStat"><span class="dot" id="qtHealthDot"></span><span id="qtHealthStatText">—</span></div></div>
     </div>
 
     <div class="rpanel" id="healthPanel" style="background:#ffffff; margin-top:14px;">
@@ -693,6 +699,16 @@
   loadUsers();
 
   // System Health
+  function renderHealthTile(appUp, dbUp) {
+    const dot  = document.getElementById('qtHealthDot');
+    const text = document.getElementById('qtHealthStatText');
+    const wrap = document.getElementById('qtHealthStat');
+    const allUp = appUp && dbUp;
+    dot.className = 'dot ' + (allUp ? 'up' : 'down');
+    text.textContent = allUp ? 'All up' : (!appUp && !dbUp ? 'App+DB down' : (!appUp ? 'App down' : 'DB down'));
+    wrap.className = 'qt-sub ' + (allUp ? 'ok' : 'bad');
+  }
+
   async function loadHealthData() {
     try {
       const healthData = await authFetch('/actuator/health', { method: 'GET' });
@@ -708,6 +724,8 @@
       const dbUp = dbStatus === 'UP';
       document.getElementById('dbStatus').innerHTML = `<span class="dot ${dbUp?'up':'down'}"></span>${dbStatus}`;
       document.getElementById('dbStatusBar').className = 'status-fill ' + (dbUp ? 'up' : 'down');
+
+      renderHealthTile(up, dbUp);
 
       const now = new Date();
       document.getElementById('healthLastUpdated').textContent = now.toLocaleTimeString();
@@ -734,10 +752,39 @@
       document.getElementById('dbStatus').innerHTML = '<span class="dot down"></span>ERROR';
       document.getElementById('appStatusBar').className = 'status-fill down';
       document.getElementById('dbStatusBar').className = 'status-fill down';
+      renderHealthTile(false, false);
     }
   }
 
   loadHealthData();
+
+  // AI Summary tile: a glance stat for the last 30 minutes. Deliberately NOT
+  // polled on an interval like health - /api/v1/logs/summarize does a full
+  // log-file scan and can trigger a real OpenAI call when logs are found, so
+  // it only fetches once on load and again if the user clicks the tile.
+  async function loadAiTile() {
+    const wrap = document.getElementById('qtAiStat');
+    try {
+      const end = new Date();
+      const start = new Date(end.getTime() - 30 * 60 * 1000);
+      const res = await authFetch(
+        `/api/v1/logs/summarize?startTime=${encodeURIComponent(start.toISOString())}&endTime=${encodeURIComponent(end.toISOString())}`,
+        { method: 'GET' }
+      );
+      const errors = (res.logLevelStats && res.logLevelStats.ERROR) || 0;
+      const warns  = (res.logLevelStats && res.logLevelStats.WARN) || 0;
+      const issues = errors + warns;
+      wrap.textContent = issues === 0 ? '0 issues' : `${issues} issue${issues===1?'':'s'}`;
+      wrap.title = 'Errors + warnings in the last 30 minutes';
+      wrap.className = 'qt-sub ' + (issues === 0 ? 'ok' : 'bad');
+    } catch (err) {
+      console.error('Error loading AI summary tile stat:', err);
+      wrap.textContent = '—';
+      wrap.className = 'qt-sub';
+    }
+  }
+
+  loadAiTile();
   setInterval(loadHealthData, 30000);
 
   // Date-range calendar for the AI Summary filter — tracks real Date objects,
@@ -910,6 +957,7 @@
     const panel = document.getElementById('aiPanel');
     if (isMobileNav()){ closeSideDrawer(); openRsideDrawer(); }
     flashAndScroll(panel);
+    loadAiTile();
   });
 
   // Quick tool: Health — re-poll right now instead of waiting for the 30s auto-refresh.
